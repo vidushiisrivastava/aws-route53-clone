@@ -1,5 +1,6 @@
 """FastAPI entry point for the AWS Route53 clone backend."""
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -74,14 +75,24 @@ run_sqlite_migrations()
 
 app = FastAPI(title="AWS Route53 Clone API")
 
-# Allow the Next.js dev server to call the API locally
+# Allow localhost and hosted frontend origins via CORS_ORIGINS env var
+raw_origins = os.getenv("CORS_ORIGINS", "").strip()
+cors_origins = [o.strip() for o in raw_origins.split(",") if o.strip()] if raw_origins else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "AWS Route53 Clone API"}
+
 
 app.include_router(auth.router)
 app.include_router(zones.router)

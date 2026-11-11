@@ -1,3 +1,4 @@
+import os
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -5,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from . import models, database
 
-SECRET_KEY = "dev-secret-key-route53-clone"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-route53-clone-32bytes!")
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

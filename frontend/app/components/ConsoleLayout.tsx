@@ -540,8 +540,14 @@ export default function ConsoleLayout({
                 <a className="aws-link" style={{ display: 'block', padding: '6px 8px' }} href="https://docs.aws.amazon.com/route53/" target="_blank" rel="noreferrer">
                   Route 53 Documentation ↗
                 </a>
-                <a className="aws-link" style={{ display: 'block', padding: '6px 8px' }} href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
-                  Local API Reference (Swagger) ↗
+                <a
+                  className="aws-link"
+                  style={{ display: 'block', padding: '6px 8px' }}
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/docs`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  API Reference (Swagger) ↗
                 </a>
                 <div
                   onClick={() => {
