@@ -1,0 +1,21 @@
+# Python
+backend/venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+route53.db
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/.turbo/
+node_modules/
+.next/
+
+# Misc
+.env
+.env.local
+*.log
+.DS_Store
+
