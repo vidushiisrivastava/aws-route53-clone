@@ -404,7 +404,7 @@ export default function HostedZonesPage() {
                 }
               />
             </div>
-            <div style={{ width: '210px' }}>
+            <div className="r53-filter-select">
               <Select
                 selectedOption={typeFilter}
                 options={ZONE_TYPE_OPTIONS}

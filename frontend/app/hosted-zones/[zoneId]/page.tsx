@@ -617,7 +617,7 @@ export default function HostedZoneDetailPage() {
                   }
                 />
               </div>
-              <div style={{ width: '180px' }}>
+              <div className="r53-filter-select">
                 <Select
                   selectedOption={typeFilter}
                   options={TYPE_FILTER_OPTIONS}

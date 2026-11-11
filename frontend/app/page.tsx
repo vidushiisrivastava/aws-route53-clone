@@ -43,28 +43,19 @@ export default function Home() {
       disableContentPaddings={true}
       contentType="default"
     >
-      <div style={{ backgroundColor: '#0f141a', color: '#e5e7eb', minHeight: '100%' }}>
+      <div className="aws-overview-page" style={{ backgroundColor: '#0f141a', color: '#e5e7eb', minHeight: '100%' }}>
         {/* Hero Banner */}
         <section className="aws-hero-banner">
-          <div
-            style={{
-              maxWidth: 1180,
-              margin: '0 auto',
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1.5fr) minmax(280px, 1fr)',
-              gap: 36,
-              alignItems: 'start',
-            }}
-          >
+          <div className="r53-overview-grid">
             {/* Left Hero Text */}
             <div style={{ paddingTop: 12 }}>
               <div style={{ fontSize: 13, color: '#aab7b8', marginBottom: 8 }}>
                 Network &amp; Content Delivery
               </div>
-              <h1 style={{ fontSize: 40, fontWeight: 700, color: '#ffffff', margin: '0 0 8px 0', lineHeight: 1.15 }}>
+              <h1 style={{ fontSize: 'clamp(26px, 4vw, 40px)', fontWeight: 700, color: '#ffffff', margin: '0 0 8px 0', lineHeight: 1.15 }}>
                 Amazon Route 53
               </h1>
-              <div style={{ fontSize: 30, fontWeight: 300, color: '#e5e7eb', margin: '0 0 18px 0', lineHeight: 1.25 }}>
+              <div style={{ fontSize: 'clamp(18px, 2.5vw, 30px)', fontWeight: 300, color: '#e5e7eb', margin: '0 0 18px 0', lineHeight: 1.25 }}>
                 A reliable way to route users to internet applications
               </div>
               <p style={{ fontSize: 14, color: '#aab7b8', margin: 0, lineHeight: 1.55, maxWidth: 560 }}>
@@ -127,17 +118,7 @@ export default function Home() {
         </section>
 
         {/* Main Content Grid */}
-        <div
-          style={{
-            maxWidth: 1180,
-            margin: '0 auto',
-            padding: '32px 48px 56px 48px',
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.5fr) minmax(280px, 1fr)',
-            gap: 36,
-            alignItems: 'start',
-          }}
-        >
+        <div className="r53-overview-grid r53-overview-content">
           {/* Left Main Column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
             {/* How it works */}
@@ -211,7 +192,7 @@ export default function Home() {
               </h2>
               <div className="aws-card" style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
                 {/* Domain names */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+                <div className="r53-product-row">
                   <div style={{ width: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexShrink: 0 }}>
                     <Shield53Icon size={48} />
                     <svg width="72" height="44" viewBox="0 0 72 44" fill="none">
@@ -236,7 +217,7 @@ export default function Home() {
                 </div>
 
                 {/* Hosted zones */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+                <div className="r53-product-row">
                   <div style={{ width: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0 }}>
                     <Shield53Icon size={32} />
                     <Shield53Icon size={48} />
@@ -257,7 +238,7 @@ export default function Home() {
                 </div>
 
                 {/* Health checks */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+                <div className="r53-product-row">
                   <div style={{ width: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                     <svg width="160" height="44" viewBox="0 0 160 44" fill="none">
                       <polyline
@@ -286,7 +267,7 @@ export default function Home() {
                 </div>
 
                 {/* Traffic flow */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+                <div className="r53-product-row">
                   <div style={{ width: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0 }}>
                     <Shield53Icon size={46} />
                     <svg width="86" height="46" viewBox="0 0 86 46" fill="none">
@@ -312,7 +293,7 @@ export default function Home() {
                 </div>
 
                 {/* Resolver */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+                <div className="r53-product-row">
                   <div style={{ width: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexShrink: 0 }}>
                     <svg width="38" height="42" viewBox="0 0 38 42" fill="none">
                       <rect x="4" y="4" width="30" height="10" rx="2" stroke="#ffffff" strokeWidth="1.6" />
@@ -438,7 +419,12 @@ export default function Home() {
                 <a className="aws-link" href="https://docs.aws.amazon.com/route53/" target="_blank" rel="noreferrer">
                   Documentation
                 </a>
-                <a className="aws-link" href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+                <a
+                  className="aws-link"
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/docs`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   API reference
                 </a>
                 <a className="aws-link" href="https://aws.amazon.com/route53/faqs/" target="_blank" rel="noreferrer">

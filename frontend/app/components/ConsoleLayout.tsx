@@ -79,14 +79,17 @@ export default function ConsoleLayout({
   const [openMenu, setOpenMenu] = useState<'services' | 'notif' | 'help' | 'settings' | 'account' | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Sync theme preference from localStorage
+  // Sync theme preference & responsive nav drawer from viewport
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const savedTheme = window.localStorage.getItem('r53_dark_mode');
     if (savedTheme !== null) {
       setDarkMode(savedTheme === 'true');
     }
-  }, []);
+    if (defaultNavOpen === undefined && window.innerWidth < 960) {
+      setNavigationOpen(false);
+    }
+  }, [defaultNavOpen]);
 
   useEffect(() => {
     applyMode(darkMode ? Mode.Dark : Mode.Light);
@@ -234,28 +237,13 @@ export default function ConsoleLayout({
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: darkMode ? '#0f141a' : '#f2f3f3' }}>
       {/* Authentic AWS Console Top Header */}
-      <header
-        style={{
-          height: 44,
-          backgroundColor: '#0f141a',
-          borderBottom: '1px solid #232f3e',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 16px',
-          color: '#d1d5db',
-          fontSize: 13,
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-        }}
-      >
+      <header className="aws-console-header">
         {/* Left: AWS Logo + Services + Global Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+        <div className="aws-header-left">
           {/* AWS Logo */}
           <div
             onClick={() => navigate('/')}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, paddingRight: 6 }}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, paddingRight: 4, flexShrink: 0 }}
             title="AWS Home / Route 53 Overview"
           >
             <svg width="34" height="22" viewBox="0 0 40 24" fill="none">
@@ -267,11 +255,12 @@ export default function ConsoleLayout({
             </svg>
           </div>
 
-          <span style={{ color: '#3b4754' }}>|</span>
+          <span className="aws-hide-sm" style={{ color: '#3b4754' }}>|</span>
 
           {/* AI Sparkle icon */}
           <button
             type="button"
+            className="aws-hide-sm"
             onClick={() => navigate('/dashboard')}
             title="Route 53 Dashboard"
             style={{
@@ -325,6 +314,7 @@ export default function ConsoleLayout({
                   top: 36,
                   left: 0,
                   width: 280,
+                  maxWidth: 'calc(100vw - 24px)',
                   backgroundColor: '#161d26',
                   border: '1px solid #354150',
                   borderRadius: 8,
@@ -358,7 +348,7 @@ export default function ConsoleLayout({
           </div>
 
           {/* Search Input */}
-          <div style={{ position: 'relative', flex: '0 1 380px', minWidth: 160 }}>
+          <div className="aws-header-search">
             <div
               style={{
                 display: 'flex',
@@ -393,9 +383,10 @@ export default function ConsoleLayout({
                   color: '#ffffff',
                   fontSize: 13,
                   width: '100%',
+                  minWidth: 0,
                 }}
               />
-              <span style={{ fontSize: 11, color: '#9ba7b6', whiteSpace: 'nowrap' }}>[Alt+S] ✦</span>
+              <span className="aws-hide-sm" style={{ fontSize: 11, color: '#9ba7b6', whiteSpace: 'nowrap' }}>[Alt+S] ✦</span>
             </div>
 
             {searchFocused ? (
@@ -439,10 +430,11 @@ export default function ConsoleLayout({
         </div>
 
         {/* Right: CloudShell, Bell, Help, Settings, Global, User */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="aws-header-right">
           {/* CloudShell */}
           <button
             type="button"
+            className="aws-hide-sm"
             onClick={() => navigate('/hosted-zones')}
             title="Hosted zones"
             style={{ background: 'transparent', border: 'none', color: '#d1d5db', cursor: 'pointer', padding: 4 }}
@@ -676,7 +668,7 @@ export default function ConsoleLayout({
             ) : null}
           </div>
 
-          <span style={{ color: '#e5e7eb', fontWeight: 500, whiteSpace: 'nowrap' }}>Global ▾</span>
+          <span className="aws-hide-sm" style={{ color: '#e5e7eb', fontWeight: 500, whiteSpace: 'nowrap' }}>Global ▾</span>
 
           {/* Account Menu */}
           <div style={{ position: 'relative' }}>
