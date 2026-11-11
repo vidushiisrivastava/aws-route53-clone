@@ -1,11 +1,79 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 html,
 body {
   margin: 0;
   padding: 0;
   height: 100%;
   background-color: #f2f3f3;
+  color: #16191f;
+  color-scheme: light;
+  font-family: "Amazon Ember", "Helvetica Neue", Roboto, Arial, sans-serif;
+}
+
+html.awsui-dark-mode,
+html.awsui-dark-mode body {
+  background-color: #0f141a;
+  color: #d1d5db;
+  color-scheme: dark;
+}
+
+.aws-hero-banner {
+  background: linear-gradient(135deg, #232f3e 0%, #161d26 60%, #0f141a 100%);
+  color: #f3f4f6;
+  border-bottom: 1px solid #2b3645;
+  padding: 40px 48px;
+}
+
+.aws-card {
+  background-color: #ffffff;
+  border: 1px solid #d5dbdb;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+html.awsui-dark-mode .aws-card {
+  background-color: #161d26;
+  border: 1px solid #2b3645;
+}
+
+.aws-orange-btn {
+  background-color: #ff9900;
+  color: #0f141a;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 22px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+.aws-orange-btn:hover {
+  background-color: #ec7211;
+}
+
+.aws-link {
+  color: #539fe5;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.aws-link:hover {
+  color: #89bdf0;
+  text-decoration: underline;
+}
+
+.aws-console-footer {
+  background-color: #0f141a;
+  border-top: 1px solid #232f3e;
+  color: #aab7b8;
+  font-size: 12px;
+  padding: 8px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
