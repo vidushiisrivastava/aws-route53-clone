@@ -176,9 +176,6 @@ export default function LoginPage() {
                   Amazon Route 53
                 </span>
               </div>
-              <Box color="text-body-secondary" fontSize="body-s">
-                Mocked AWS IAM Sign-In with persistent JWT session
-              </Box>
             </div>
 
             <Container
