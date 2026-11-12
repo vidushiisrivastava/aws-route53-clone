@@ -281,3 +281,88 @@ def export_zone(
             lines.append(f"{r.name:<35} {r.ttl:<8} IN {r.type:<8} {v}")
 
     return PlainTextResponse("\n".join(lines))
+
+
+@router.get("/{zone_id}/simulate")
+def simulate_dns_query(
+    zone_id: str,
+    name: str = Query(..., description="Record name or '@' for zone apex"),
+    type: str = Query("A", description="DNS record type (A, AAAA, CNAME, TXT, MX, etc.)"),
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Simulate Route 53 DNS resolution for a record name and type, factoring in routing policies & health checks."""
+    zone = resolve_owned_zone(zone_id, current_user, db)
+    clean_zone = zone.name.strip().rstrip(".")
+    clean_sub = name.strip().rstrip(".")
+    if not clean_sub or clean_sub == "@" or clean_sub == clean_zone:
+        fqdn = f"{clean_zone}."
+    elif clean_sub.endswith(f".{clean_zone}"):
+        fqdn = f"{clean_sub}."
+    else:
+        fqdn = f"{clean_sub}.{clean_zone}."
+
+    qtype = type.strip().upper()
+    candidates = [
+        r for r in zone.records
+        if r.name.lower() == fqdn.lower() and r.type.upper() == qtype
+    ]
+    if not candidates:
+        return {
+            "query_name": fqdn,
+            "query_type": qtype,
+            "response_code": "NXDOMAIN",
+            "routing_policy": None,
+            "ttl": None,
+            "answers": [],
+            "evaluated_records": [],
+        }
+
+    hc_ids = {r.health_check_id for r in candidates if r.health_check_id}
+    hc_map = {}
+    if hc_ids:
+        for hc in db.query(models.HealthCheck).filter(models.HealthCheck.id.in_(hc_ids)).all():
+            hc_map[hc.id] = hc.status
+
+    evaluated = []
+    healthy_candidates = []
+    for r in candidates:
+        hc_status = hc_map.get(r.health_check_id, "Healthy" if not r.health_check_id else "Unknown")
+        is_healthy = hc_status != "Unhealthy"
+        evaluated.append({
+            "id": r.id,
+            "routing_policy": r.routing_policy or "Simple",
+            "weight": r.weight,
+            "failover": r.failover,
+            "health_check_status": hc_status if r.health_check_id else None,
+            "selected": False,
+            "value": r.value,
+        })
+        if is_healthy:
+            healthy_candidates.append((r, evaluated[-1]))
+
+    pool = healthy_candidates or [(r, ev) for r, ev in zip(candidates, evaluated)]
+    policy = pool[0][0].routing_policy or "Simple"
+    if policy == "Failover":
+        pool.sort(key=lambda pair: 0 if (pair[0].failover or "").upper() == "PRIMARY" else 1)
+        chosen = [pool[0]]
+    elif policy == "Weighted":
+        pool.sort(key=lambda pair: pair[0].weight or 0, reverse=True)
+        chosen = [pool[0]]
+    else:
+        chosen = [pool[0]]
+
+    answers: list[str] = []
+    for rec, ev in chosen:
+        ev["selected"] = True
+        answers.extend([line.strip() for line in rec.value.splitlines() if line.strip()])
+
+    return {
+        "query_name": fqdn,
+        "query_type": qtype,
+        "response_code": "NOERROR",
+        "routing_policy": policy,
+        "ttl": chosen[0][0].ttl,
+        "answers": answers,
+        "evaluated_records": evaluated,
+    }

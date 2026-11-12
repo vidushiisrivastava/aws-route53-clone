@@ -93,6 +93,7 @@ class TestZonesAndRecords(unittest.TestCase):
         policy = traffic_policies.create_traffic_policy(
             schemas.TrafficPolicyCreate(name="tp1", dns_type="A"),
             db=self.db,
+            current_user=self.user,
         )
         traffic_policies.create_policy_record(
             schemas.PolicyRecordCreate(
@@ -106,6 +107,7 @@ class TestZonesAndRecords(unittest.TestCase):
                 traffic_policy_version=policy.version,
             ),
             db=self.db,
+            current_user=self.user,
         )
 
         with self.assertRaises(HTTPException) as empty_ctx:
@@ -126,7 +128,7 @@ class TestZonesAndRecords(unittest.TestCase):
         self.assertIn("newsite.com.", rec_names)
         self.assertIn("www.newsite.com.", rec_names)
 
-        prs = traffic_policies.list_policy_records(db=self.db)
+        prs = traffic_policies.list_policy_records(db=self.db, current_user=self.user)
         self.assertEqual(prs[0].hosted_zone_name, "newsite.com")
 
     def test_record_crud_system_protection_bind_import_export_and_bulk_ops(self):

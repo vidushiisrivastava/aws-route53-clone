@@ -105,6 +105,35 @@ export default function HostedZoneDetailPage() {
   const [bulkTtlValue, setBulkTtlValue] = useState('300');
   const [updatingBulkTtl, setUpdatingBulkTtl] = useState(false);
 
+  // DNS Query Simulator Modal
+  const [simulateModalVisible, setSimulateModalVisible] = useState(false);
+  const [simQueryName, setSimQueryName] = useState('@');
+  const [simQueryType, setSimQueryType] = useState(RECORD_TYPES[0]);
+  const [simulating, setSimulating] = useState(false);
+  const [simResult, setSimResult] = useState<{
+    query_name: string;
+    query_type: string;
+    response_code: string;
+    routing_policy: string | null;
+    ttl: number | null;
+    answers: string[];
+  } | null>(null);
+
+  const handleSimulateDns = async () => {
+    if (!zone) return;
+    try {
+      setSimulating(true);
+      const res = await api.get(`/zones/${zone.id}/simulate`, {
+        params: { name: simQueryName.trim() || '@', type: simQueryType.value || 'A' },
+      });
+      setSimResult(res.data);
+    } catch {
+      notify({ type: 'error', header: 'DNS simulation failed', content: 'Unable to simulate DNS query.' });
+    } finally {
+      setSimulating(false);
+    }
+  };
+
   // Edit / Delete Zone Modals
   const [editZoneModalVisible, setEditZoneModalVisible] = useState(false);
   const [zoneNameDraft, setZoneNameDraft] = useState('');
@@ -731,6 +760,20 @@ export default function HostedZoneDetailPage() {
                 <SpaceBetween direction="horizontal" size="xs">
                   <Button
                     onClick={() => {
+                      const sel = selectedRecords[0];
+                      setSimQueryName(sel ? sel.name : '@');
+                      if (sel) {
+                        const match = RECORD_TYPES.find((t) => t.value === sel.type);
+                        if (match) setSimQueryType(match);
+                      }
+                      setSimResult(null);
+                      setSimulateModalVisible(true);
+                    }}
+                  >
+                    Test record
+                  </Button>
+                  <Button
+                    onClick={() => {
                       setImportError('');
                       setImportModalVisible(true);
                     }}
@@ -1177,6 +1220,61 @@ export default function HostedZoneDetailPage() {
               placeholder="300"
             />
           </FormField>
+        </SpaceBetween>
+      </Modal>
+
+      {/* DNS Query Simulator Modal */}
+      <Modal
+        visible={simulateModalVisible}
+        onDismiss={() => setSimulateModalVisible(false)}
+        header="Test DNS response"
+        footer={
+          <Box float="right">
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button variant="link" onClick={() => setSimulateModalVisible(false)}>
+                Close
+              </Button>
+              <Button variant="primary" loading={simulating} onClick={handleSimulateDns}>
+                Get response
+              </Button>
+            </SpaceBetween>
+          </Box>
+        }
+      >
+        <SpaceBetween size="m">
+          <FormField label="Record name" description={`Subdomain or '@' for ${zone?.name || 'zone apex'}`}>
+            <Input
+              value={simQueryName}
+              onChange={({ detail }) => setSimQueryName(detail.value)}
+              placeholder="www"
+            />
+          </FormField>
+          <FormField label="Record type">
+            <Select
+              selectedOption={simQueryType}
+              options={RECORD_TYPES}
+              onChange={({ detail }) => setSimQueryType(detail.selectedOption as typeof RECORD_TYPES[0])}
+            />
+          </FormField>
+          {simResult && (
+            <Alert
+              type={simResult.response_code === 'NOERROR' ? 'success' : 'warning'}
+              header={`DNS Response: ${simResult.response_code}`}
+            >
+              <SpaceBetween size="xs">
+                <Box>
+                  <b>Query:</b> <Box variant="code" display="inline">{simResult.query_name}</Box> ({simResult.query_type})
+                </Box>
+                <Box>
+                  <b>Routing policy:</b> {simResult.routing_policy || 'N/A'} | <b>TTL:</b> {simResult.ttl ?? '-'}
+                </Box>
+                <Box>
+                  <b>Returned value(s):</b>{' '}
+                  {simResult.answers.length > 0 ? simResult.answers.join(', ') : 'No matching records'}
+                </Box>
+              </SpaceBetween>
+            </Alert>
+          )}
         </SpaceBetween>
       </Modal>
     </ConsoleLayout>

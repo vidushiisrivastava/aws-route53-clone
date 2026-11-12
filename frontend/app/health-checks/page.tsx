@@ -15,7 +15,7 @@ import TextFilter from '@cloudscape-design/components/text-filter';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import ColumnLayout from '@cloudscape-design/components/column-layout';
 import Container from '@cloudscape-design/components/container';
-import { api, HealthCheck } from '../lib/api';
+import { api, HealthCheck, notify } from '../lib/api';
 
 export default function HealthChecksPage() {
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
@@ -43,6 +43,7 @@ export default function HealthChecksPage() {
       setHealthChecks(res.data);
     } catch (err) {
       console.error('Failed to fetch health checks', err);
+      notify({ type: 'error', header: 'Failed to load health checks', content: 'Please check your session and try again.' });
     } finally {
       setLoading(false);
     }
@@ -65,13 +66,23 @@ export default function HealthChecksPage() {
   };
 
   const handleCreate = async () => {
+    const trimmedEndpoint = endpoint.trim();
+    const parsedPort = parseInt(port, 10) || (protocol.value === 'HTTPS' ? 443 : 80);
+    if (!trimmedEndpoint) {
+      notify({ type: 'error', header: 'Validation error', content: 'Domain name or IP endpoint is required.' });
+      return;
+    }
+    if (parsedPort < 1 || parsedPort > 65535) {
+      notify({ type: 'error', header: 'Validation error', content: 'Port must be between 1 and 65535.' });
+      return;
+    }
     try {
       setSubmitting(true);
       await api.post('/health-checks/', {
         name: name.trim(),
         protocol: protocol.value,
-        endpoint: endpoint.trim(),
-        port: parseInt(port, 10) || (protocol.value === 'HTTPS' ? 443 : 80),
+        endpoint: trimmedEndpoint,
+        port: parsedPort,
         resource_path: resourcePath.trim() || '/',
         request_interval: parseInt(interval, 10) || 30,
         failure_threshold: parseInt(threshold, 10) || 3,
@@ -80,9 +91,11 @@ export default function HealthChecksPage() {
       setName('');
       setEndpoint('');
       setResourcePath('/');
+      notify({ type: 'success', header: 'Health check created', content: `Created health check for ${trimmedEndpoint}.` });
       await fetchHealthChecks();
     } catch (err) {
       console.error('Failed to create health check', err);
+      notify({ type: 'error', header: 'Failed to create health check', content: 'Verify endpoint format and try again.' });
     } finally {
       setSubmitting(false);
     }
@@ -95,8 +108,14 @@ export default function HealthChecksPage() {
       const res = await api.post<HealthCheck>(`/health-checks/${selected[0].id}/check`);
       setHealthChecks((prev) => prev.map((h) => (h.id === res.data.id ? res.data : h)));
       setSelected([res.data]);
+      notify({
+        type: res.data.status === 'Healthy' ? 'success' : 'warning',
+        header: `Health check ${res.data.status}`,
+        content: res.data.status_reason || `Probed ${res.data.endpoint}`,
+      });
     } catch (err) {
       console.error('Failed to run health check', err);
+      notify({ type: 'error', header: 'Health check probe failed', content: 'Unable to probe endpoint right now.' });
     } finally {
       setCheckingId(null);
     }
@@ -106,12 +125,15 @@ export default function HealthChecksPage() {
     if (!selected[0]) return;
     try {
       setSubmitting(true);
+      const targetName = selected[0].name;
       await api.delete(`/health-checks/${selected[0].id}`);
       setSelected([]);
       setDeleteModalVisible(false);
+      notify({ type: 'success', header: 'Health check deleted', content: `Deleted "${targetName}".` });
       await fetchHealthChecks();
     } catch (err) {
       console.error('Failed to delete health check', err);
+      notify({ type: 'error', header: 'Failed to delete health check', content: 'Please try again.' });
     } finally {
       setSubmitting(false);
     }

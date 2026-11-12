@@ -15,7 +15,7 @@ import Textarea from '@cloudscape-design/components/textarea';
 import TextFilter from '@cloudscape-design/components/text-filter';
 import Badge from '@cloudscape-design/components/badge';
 import Container from '@cloudscape-design/components/container';
-import { api, TrafficPolicy } from '../lib/api';
+import { api, TrafficPolicy, notify } from '../lib/api';
 
 export default function TrafficPoliciesPage() {
   const [policies, setPolicies] = useState<TrafficPolicy[]>([]);
@@ -39,6 +39,7 @@ export default function TrafficPoliciesPage() {
       setPolicies(res.data);
     } catch (err) {
       console.error('Failed to fetch traffic policies', err);
+      notify({ type: 'error', header: 'Failed to load traffic policies', content: 'Please refresh and try again.' });
     } finally {
       setLoading(false);
     }
@@ -55,6 +56,10 @@ export default function TrafficPoliciesPage() {
   );
 
   const handleCreate = async () => {
+    if (!name.trim()) {
+      notify({ type: 'error', header: 'Validation error', content: 'Policy name is required.' });
+      return;
+    }
     try {
       setSubmitting(true);
       await api.post('/traffic-policies/', {
@@ -65,9 +70,11 @@ export default function TrafficPoliciesPage() {
       setCreateModalVisible(false);
       setName('');
       setComment('');
+      notify({ type: 'success', header: 'Traffic policy created', content: `Created traffic policy "${name.trim()}".` });
       await fetchPolicies();
     } catch (err) {
       console.error('Failed to create traffic policy', err);
+      notify({ type: 'error', header: 'Failed to create traffic policy', content: 'Please check your input and try again.' });
     } finally {
       setSubmitting(false);
     }
@@ -76,6 +83,12 @@ export default function TrafficPoliciesPage() {
   const handleSaveNewVersion = async () => {
     if (!selected[0]) return;
     try {
+      JSON.parse(documentDraft);
+    } catch {
+      notify({ type: 'error', header: 'Invalid policy JSON', content: 'Policy document must be valid JSON.' });
+      return;
+    }
+    try {
       setSubmitting(true);
       const res = await api.post<TrafficPolicy>(`/traffic-policies/${selected[0].id}/version`, {
         comment,
@@ -83,9 +96,11 @@ export default function TrafficPoliciesPage() {
       });
       setEditModalVisible(false);
       setSelected([res.data]);
+      notify({ type: 'success', header: 'New policy version saved', content: `Updated "${res.data.name}" to v${res.data.version}.` });
       await fetchPolicies();
     } catch (err) {
       console.error('Failed to update policy version', err);
+      notify({ type: 'error', header: 'Failed to save policy version', content: 'Please verify JSON syntax and try again.' });
     } finally {
       setSubmitting(false);
     }
@@ -95,12 +110,15 @@ export default function TrafficPoliciesPage() {
     if (!selected[0]) return;
     try {
       setSubmitting(true);
+      const targetName = selected[0].name;
       await api.delete(`/traffic-policies/${selected[0].id}`);
       setSelected([]);
       setDeleteModalVisible(false);
+      notify({ type: 'success', header: 'Traffic policy deleted', content: `Deleted "${targetName}".` });
       await fetchPolicies();
     } catch (err) {
       console.error('Failed to delete traffic policy', err);
+      notify({ type: 'error', header: 'Failed to delete traffic policy', content: 'Please try again.' });
     } finally {
       setSubmitting(false);
     }

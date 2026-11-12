@@ -28,6 +28,12 @@ def run_sqlite_migrations():
             ("set_identifier", "VARCHAR"),
             ("is_alias", "BOOLEAN DEFAULT 0"),
         ],
+        "health_checks": [("owner_id", "INTEGER")],
+        "traffic_policies": [("owner_id", "INTEGER")],
+        "policy_records": [("owner_id", "INTEGER")],
+        "resolver_endpoints": [("owner_id", "INTEGER")],
+        "resolver_rules": [("owner_id", "INTEGER")],
+        "route53_profiles": [("owner_id", "INTEGER")],
     }
 
     with database.engine.begin() as conn:

@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import List, Optional
+import ipaddress
+import re
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from .models import RecordType
 
 
@@ -72,6 +74,41 @@ class DnsRecordBase(BaseModel):
     is_alias: bool = False
     model_config = ConfigDict(arbitrary_types_allowed=True, from_attributes=True)
 
+    @model_validator(mode="after")
+    def validate_record_payload(self):
+        rec_type = self.type.value if hasattr(self.type, "value") else str(self.type).upper()
+        lines = [line.strip() for line in (self.value or "").splitlines() if line.strip()]
+        if not lines:
+            raise ValueError("Record value cannot be empty")
+
+        if not self.is_alias:
+            if rec_type == "A":
+                for line in lines:
+                    try:
+                        ipaddress.IPv4Address(line)
+                    except ValueError as exc:
+                        raise ValueError(f"Invalid IPv4 address for A record: '{line}'") from exc
+            elif rec_type == "AAAA":
+                for line in lines:
+                    try:
+                        ipaddress.IPv6Address(line)
+                    except ValueError as exc:
+                        raise ValueError(f"Invalid IPv6 address for AAAA record: '{line}'") from exc
+            elif rec_type == "MX":
+                for line in lines:
+                    if not re.match(r"^\d+\s+\S+$", line):
+                        raise ValueError(
+                            f"Invalid MX record value '{line}'; expected '<priority> <mail-server>'"
+                        )
+
+        if self.routing_policy == "Weighted":
+            if self.weight is None or not (0 <= self.weight <= 255):
+                raise ValueError("Weighted routing policy requires weight between 0 and 255")
+        elif self.routing_policy == "Failover":
+            if (self.failover or "").upper() not in ("PRIMARY", "SECONDARY"):
+                raise ValueError("Failover routing policy requires failover='PRIMARY' or 'SECONDARY'")
+        return self
+
 
 class DnsRecordCreate(DnsRecordBase):
     pass
@@ -92,12 +129,12 @@ class DnsRecordRead(DnsRecordBase):
 # ---------- Health Check ----------
 class HealthCheckCreate(BaseModel):
     name: Optional[str] = ""
-    protocol: str = "HTTPS"
-    endpoint: str
-    port: Optional[int] = None
+    protocol: Literal["HTTP", "HTTPS", "TCP"] = "HTTPS"
+    endpoint: str = Field(..., min_length=1)
+    port: Optional[int] = Field(None, ge=1, le=65535)
     resource_path: Optional[str] = "/"
-    request_interval: int = 30
-    failure_threshold: int = 3
+    request_interval: int = Field(30, ge=10, le=300)
+    failure_threshold: int = Field(3, ge=1, le=10)
 
 
 class HealthCheckRead(BaseModel):

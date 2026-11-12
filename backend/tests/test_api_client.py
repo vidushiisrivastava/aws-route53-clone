@@ -351,3 +351,129 @@ class TestDnsRecordsEndpoints:
         )
         assert bad_bind.status_code == 400
 
+        # Invalid A / AAAA / MX values rejected by Pydantic (422)
+        bad_a = client.post(
+            f"/zones/{zone_id}/records/",
+            json={"name": "bad-a", "type": "A", "ttl": 300, "value": "not-an-ipv4"},
+            headers=auth_headers,
+        )
+        assert bad_a.status_code == 422
+
+        bad_aaaa = client.post(
+            f"/zones/{zone_id}/records/",
+            json={"name": "bad-aaaa", "type": "AAAA", "ttl": 300, "value": "192.0.2.1"},
+            headers=auth_headers,
+        )
+        assert bad_aaaa.status_code == 422
+
+        bad_mx = client.post(
+            f"/zones/{zone_id}/records/",
+            json={"name": "@", "type": "MX", "ttl": 300, "value": "mail.example.com."},
+            headers=auth_headers,
+        )
+        assert bad_mx.status_code == 422
+
+
+class TestSecurityAndSimulationApi:
+    def test_supporting_services_require_auth_and_isolate_users(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ):
+        assert client.get("/health-checks/").status_code == 401
+        assert client.get("/traffic-policies/").status_code == 401
+        assert client.get("/policy-records/").status_code == 401
+        assert client.get("/resolver/endpoints/").status_code == 401
+        assert client.get("/resolver/rules/").status_code == 401
+        assert client.get("/profiles/").status_code == 401
+
+        # Create a health check as user A (mocking SSRF-protected probe to avoid network)
+        from app.routers import health_checks
+        from unittest.mock import patch
+
+        with patch.object(
+            health_checks, "probe_endpoint", return_value=("Healthy", "Success: HTTP Status Code 200")
+        ):
+            hc_res = client.post(
+                "/health-checks/",
+                json={"name": "user-a-hc", "protocol": "HTTPS", "endpoint": "example.com"},
+                headers=auth_headers,
+            )
+        assert hc_res.status_code == 201
+        hc_id = hc_res.json()["id"]
+
+        # Register user B and verify user B cannot read or delete user A's health check
+        client.post("/auth/register", json={"username": "user-b", "password": "password123"})
+        b_token = client.post(
+            "/auth/login-json", json={"username": "user-b", "password": "password123"}
+        ).json()["access_token"]
+        b_headers = {"Authorization": f"Bearer {b_token}"}
+
+        assert client.get(f"/health-checks/{hc_id}", headers=b_headers).status_code == 404
+        assert client.delete(f"/health-checks/{hc_id}", headers=b_headers).status_code == 404
+
+    def test_ssrf_blocks_loopback_and_metadata_targets(self):
+        from app.routers.health_checks import probe_endpoint
+
+        status_127, reason_127 = probe_endpoint("HTTP", "127.0.0.1", 80, "/")
+        assert status_127 == "Unhealthy"
+        assert "Blocked" in reason_127
+
+        status_meta, reason_meta = probe_endpoint("HTTP", "169.254.169.254", 80, "/latest/meta-data/")
+        assert status_meta == "Unhealthy"
+        assert "Blocked" in reason_meta
+
+    def test_dns_query_simulation_endpoint(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ):
+        zone = client.post(
+            "/zones/",
+            json={"name": "sim.example.com"},
+            headers=auth_headers,
+        ).json()
+        zone_id = zone["id"]
+
+        client.post(
+            f"/zones/{zone_id}/records/",
+            json={
+                "name": "app",
+                "type": "A",
+                "ttl": 60,
+                "value": "203.0.113.10",
+                "routing_policy": "Weighted",
+                "weight": 20,
+                "set_identifier": "canary",
+            },
+            headers=auth_headers,
+        )
+        client.post(
+            f"/zones/{zone_id}/records/",
+            json={
+                "name": "app",
+                "type": "A",
+                "ttl": 60,
+                "value": "203.0.113.20",
+                "routing_policy": "Weighted",
+                "weight": 80,
+                "set_identifier": "primary",
+            },
+            headers=auth_headers,
+        )
+
+        sim = client.get(
+            f"/zones/{zone_id}/simulate?name=app&type=A",
+            headers=auth_headers,
+        )
+        assert sim.status_code == 200
+        body = sim.json()
+        assert body["query_name"] == "app.sim.example.com."
+        assert body["response_code"] == "NOERROR"
+        assert body["routing_policy"] == "Weighted"
+        assert body["answers"] == ["203.0.113.20"]
+
+        nx = client.get(
+            f"/zones/{zone_id}/simulate?name=missing&type=A",
+            headers=auth_headers,
+        )
+        assert nx.status_code == 200
+        assert nx.json()["response_code"] == "NXDOMAIN"
+        assert nx.json()["answers"] == []
+

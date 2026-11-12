@@ -80,6 +80,7 @@ class HealthCheck(Base):
     status = Column(String, default="Checking", nullable=False)  # Healthy | Unhealthy | Checking
     status_reason = Column(String, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -91,6 +92,7 @@ class TrafficPolicy(Base):
     dns_type = Column(String, default="A", nullable=False)
     comment = Column(String, nullable=True)
     document = Column(Text, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -105,6 +107,7 @@ class PolicyRecord(Base):
     traffic_policy_id = Column(Integer, ForeignKey("traffic_policies.id"), nullable=True)
     traffic_policy_name = Column(String, nullable=False)
     traffic_policy_version = Column(Integer, default=1, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -116,6 +119,7 @@ class ResolverEndpoint(Base):
     vpc_id = Column(String, default="vpc-0a1b2c3d4e5f67890", nullable=False)
     ip_addresses = Column(String, default="10.0.1.10, 10.0.2.10", nullable=False)
     status = Column(String, default="OPERATIONAL", nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -128,6 +132,7 @@ class ResolverRule(Base):
     target_ip = Column(String, nullable=False)
     vpc_id = Column(String, default="vpc-0a1b2c3d4e5f67890", nullable=False)
     status = Column(String, default="COMPLETE", nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -139,4 +144,5 @@ class Route53Profile(Base):
     status = Column(String, default="COMPLETE", nullable=False)
     vpc_associations = Column(Text, default="", nullable=False)  # comma-separated VPC IDs
     resource_count = Column(Integer, default=0, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

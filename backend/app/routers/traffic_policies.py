@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, database
+from ..dependencies import get_current_user, get_owned_resource
 
 router = APIRouter(tags=["traffic_management"])
 
@@ -12,13 +13,31 @@ router = APIRouter(tags=["traffic_management"])
 # ---------- Traffic Policies ----------
 @router.get("/traffic-policies", response_model=List[schemas.TrafficPolicyRead], include_in_schema=False)
 @router.get("/traffic-policies/", response_model=List[schemas.TrafficPolicyRead])
-def list_traffic_policies(db: Session = Depends(database.get_db)):
-    return db.query(models.TrafficPolicy).order_by(models.TrafficPolicy.id.desc()).all()
+def list_traffic_policies(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return (
+        db.query(models.TrafficPolicy)
+        .filter((models.TrafficPolicy.owner_id == current_user.id) | (models.TrafficPolicy.owner_id.is_(None)))
+        .order_by(models.TrafficPolicy.id.desc())
+        .all()
+    )
 
 
 @router.post("/traffic-policies", response_model=schemas.TrafficPolicyRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/traffic-policies/", response_model=schemas.TrafficPolicyRead, status_code=status.HTTP_201_CREATED)
-def create_traffic_policy(payload: schemas.TrafficPolicyCreate, db: Session = Depends(database.get_db)):
+def create_traffic_policy(
+    payload: schemas.TrafficPolicyCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if payload.document:
+        try:
+            json.loads(payload.document)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid policy JSON document: {exc.msg}")
+
     default_doc = json.dumps(
         {
             "AWSPolicyFormatVersion": "2015-10-01",
@@ -46,6 +65,7 @@ def create_traffic_policy(payload: schemas.TrafficPolicyCreate, db: Session = De
         dns_type=payload.dns_type,
         comment=payload.comment or "",
         document=payload.document or default_doc,
+        owner_id=current_user.id,
     )
     db.add(policy)
     db.commit()
@@ -54,33 +74,44 @@ def create_traffic_policy(payload: schemas.TrafficPolicyCreate, db: Session = De
 
 
 @router.get("/traffic-policies/{policy_id}", response_model=schemas.TrafficPolicyRead)
-def get_traffic_policy(policy_id: int, db: Session = Depends(database.get_db)):
-    policy = db.query(models.TrafficPolicy).filter(models.TrafficPolicy.id == policy_id).first()
-    if not policy:
-        raise HTTPException(status_code=404, detail="Traffic policy not found")
-    return policy
+def get_traffic_policy(
+    policy_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return get_owned_resource(db, models.TrafficPolicy, policy_id, current_user, "Traffic policy not found")
 
 
 @router.post("/traffic-policies/{policy_id}/version", response_model=schemas.TrafficPolicyRead)
-def create_policy_version(policy_id: int, payload: schemas.TrafficPolicyUpdate, db: Session = Depends(database.get_db)):
-    policy = db.query(models.TrafficPolicy).filter(models.TrafficPolicy.id == policy_id).first()
-    if not policy:
-        raise HTTPException(status_code=404, detail="Traffic policy not found")
+def create_policy_version(
+    policy_id: int,
+    payload: schemas.TrafficPolicyUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    policy = get_owned_resource(db, models.TrafficPolicy, policy_id, current_user, "Traffic policy not found")
+    if payload.document is not None:
+        try:
+            json.loads(payload.document)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid policy JSON document: {exc.msg}")
+        policy.document = payload.document
+
     policy.version += 1
     if payload.comment is not None:
         policy.comment = payload.comment
-    if payload.document is not None:
-        policy.document = payload.document
     db.commit()
     db.refresh(policy)
     return policy
 
 
 @router.delete("/traffic-policies/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_traffic_policy(policy_id: int, db: Session = Depends(database.get_db)):
-    policy = db.query(models.TrafficPolicy).filter(models.TrafficPolicy.id == policy_id).first()
-    if not policy:
-        raise HTTPException(status_code=404, detail="Traffic policy not found")
+def delete_traffic_policy(
+    policy_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    policy = get_owned_resource(db, models.TrafficPolicy, policy_id, current_user, "Traffic policy not found")
     db.delete(policy)
     db.commit()
     return
@@ -89,28 +120,46 @@ def delete_traffic_policy(policy_id: int, db: Session = Depends(database.get_db)
 # ---------- Policy Records ----------
 @router.get("/policy-records", response_model=List[schemas.PolicyRecordRead], include_in_schema=False)
 @router.get("/policy-records/", response_model=List[schemas.PolicyRecordRead])
-def list_policy_records(db: Session = Depends(database.get_db)):
-    return db.query(models.PolicyRecord).order_by(models.PolicyRecord.id.desc()).all()
+def list_policy_records(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return (
+        db.query(models.PolicyRecord)
+        .filter((models.PolicyRecord.owner_id == current_user.id) | (models.PolicyRecord.owner_id.is_(None)))
+        .order_by(models.PolicyRecord.id.desc())
+        .all()
+    )
 
 
 @router.post("/policy-records", response_model=schemas.PolicyRecordRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/policy-records/", response_model=schemas.PolicyRecordRead, status_code=status.HTTP_201_CREATED)
-def create_policy_record(payload: schemas.PolicyRecordCreate, db: Session = Depends(database.get_db)):
+def create_policy_record(
+    payload: schemas.PolicyRecordCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     zone_name = payload.hosted_zone_name.strip()
     if payload.hosted_zone_id:
-        z = db.query(models.HostedZone).filter(models.HostedZone.id == payload.hosted_zone_id).first()
-        if z:
-            zone_name = z.name
+        z = (
+            db.query(models.HostedZone)
+            .filter(models.HostedZone.id == payload.hosted_zone_id, models.HostedZone.owner_id == current_user.id)
+            .first()
+        )
+        if not z:
+            raise HTTPException(status_code=404, detail="Hosted zone not found")
+        zone_name = z.name
 
     policy_name = payload.traffic_policy_name
     policy_version = payload.traffic_policy_version
     rec_type = payload.type
     if payload.traffic_policy_id:
-        p = db.query(models.TrafficPolicy).filter(models.TrafficPolicy.id == payload.traffic_policy_id).first()
-        if p:
-            policy_name = p.name
-            policy_version = p.version
-            rec_type = p.dns_type
+        p = get_owned_resource(
+            db, models.TrafficPolicy, payload.traffic_policy_id, current_user, "Traffic policy not found"
+        )
+        policy_name = p.name
+        policy_version = p.version
+        rec_type = p.dns_type
 
     pr = models.PolicyRecord(
         name=payload.name.strip(),
@@ -121,6 +170,7 @@ def create_policy_record(payload: schemas.PolicyRecordCreate, db: Session = Depe
         traffic_policy_id=payload.traffic_policy_id,
         traffic_policy_name=policy_name,
         traffic_policy_version=policy_version,
+        owner_id=current_user.id,
     )
     db.add(pr)
     db.commit()
@@ -129,19 +179,21 @@ def create_policy_record(payload: schemas.PolicyRecordCreate, db: Session = Depe
 
 
 @router.get("/policy-records/{record_id}", response_model=schemas.PolicyRecordRead)
-def get_policy_record(record_id: int, db: Session = Depends(database.get_db)):
-    pr = db.query(models.PolicyRecord).filter(models.PolicyRecord.id == record_id).first()
-    if not pr:
-        raise HTTPException(status_code=404, detail="Policy record not found")
-    return pr
+def get_policy_record(
+    record_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return get_owned_resource(db, models.PolicyRecord, record_id, current_user, "Policy record not found")
 
 
 @router.delete("/policy-records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_policy_record(record_id: int, db: Session = Depends(database.get_db)):
-    pr = db.query(models.PolicyRecord).filter(models.PolicyRecord.id == record_id).first()
-    if not pr:
-        raise HTTPException(status_code=404, detail="Policy record not found")
+def delete_policy_record(
+    record_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    pr = get_owned_resource(db, models.PolicyRecord, record_id, current_user, "Policy record not found")
     db.delete(pr)
     db.commit()
     return
-
