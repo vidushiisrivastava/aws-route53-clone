@@ -31,14 +31,14 @@ class TestAuthRouter(unittest.TestCase):
     def test_demo_login_creates_and_reuses_demo_user(self):
         first = auth.demo_login(db=self.db)
         second = auth.demo_login(db=self.db)
-        self.assertEqual(first["user"]["username"], "Vidushi")
+        self.assertEqual(first["user"]["username"], "admin@route53demo.com")
         self.assertEqual(first["user"]["id"], second["user"]["id"])
         self.assertEqual(first["token_type"], "bearer")
 
         me = auth.read_current_user(
             current_user=dependencies.get_current_user(token=first["access_token"], db=self.db)
         )
-        self.assertEqual(me["username"], "Vidushi")
+        self.assertEqual(me["username"], "admin@route53demo.com")
         self.assertEqual(me["account_id"], "1793-0234-9211")
 
     def test_register_and_duplicate_rejected(self):
@@ -52,8 +52,8 @@ class TestAuthRouter(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
 
     def test_login_json_and_oauth_form_and_demo_alias(self):
-        demo_alias = auth.login_json(schemas.UserCreate(username="demo", password="demo1234"), db=self.db)
-        self.assertEqual(demo_alias["user"]["username"], "Vidushi")
+        demo_alias = auth.login_json(schemas.UserCreate(username="demo", password="AdminDemo123!"), db=self.db)
+        self.assertEqual(demo_alias["user"]["username"], "admin@route53demo.com")
 
         auth.register(schemas.UserCreate(username="bob", password="password123"), db=self.db)
 

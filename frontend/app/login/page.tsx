@@ -16,8 +16,8 @@ export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [accountId, setAccountId] = useState('1793-0234-9211');
-  const [username, setUsername] = useState('Vidushi');
-  const [password, setPassword] = useState('demo1234');
+  const [username, setUsername] = useState('admin@route53demo.com');
+  const [password, setPassword] = useState('AdminDemo123!');
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,7 +214,7 @@ export default function LoginPage() {
                       name="username"
                       value={username}
                       onChange={({ detail }) => setUsername(detail.value)}
-                      placeholder="Vidushi"
+                      placeholder="admin@route53demo.com"
                       autoComplete="username"
                     />
                   </FormField>
@@ -260,7 +260,7 @@ export default function LoginPage() {
                       loading={demoLoading}
                       onClick={handleDemoLogin}
                     >
-                      1-Click Demo Sign-In (Vidushi)
+                      1-Click Demo Sign-In (admin@route53demo.com)
                     </Button>
                   </div>
 
@@ -287,8 +287,8 @@ export default function LoginPage() {
                           setPassword('');
                         } else {
                           setMode('login');
-                          setUsername('Vidushi');
-                          setPassword('demo1234');
+                          setUsername('admin@route53demo.com');
+                          setPassword('AdminDemo123!');
                         }
                       }}
                     >

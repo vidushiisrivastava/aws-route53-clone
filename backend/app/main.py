@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from .routers import auth, zones, records, health_checks, traffic_policies, resolver
 from . import models, database
+from .seed import seed_database
 
 
 def run_sqlite_migrations():
@@ -73,6 +74,8 @@ def run_sqlite_migrations():
                     ),
                 ])
         db.commit()
+        if os.getenv("DISABLE_AUTO_SEED", "").lower() not in ("1", "true", "yes"):
+            seed_database(db, only_if_empty=True)
     finally:
         db.close()
 

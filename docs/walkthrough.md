@@ -6,14 +6,14 @@ This guide walks through every page of the **AWS Route 53 Clone** web console (`
 
 ## Pre-Configured Demo Account Credentials
 
-The backend automatically seeds a demo IAM user on first login or demo sign-in (`POST /auth/demo`).
+The standalone idempotent seeder (`backend/seed.py`)—also triggered automatically on startup when the SQLite database is empty—provisions four demo IAM accounts (all under mocked AWS Account ID `1793-0234-9211`), 28 Public/Private hosted zones, DNS records (`A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `SRV`, `SOA`), health checks, and traffic policies:
 
-| Field | Value | Notes |
-| :--- | :--- | :--- |
-| **AWS Account ID** | `1793-0234-9211` | Mocked 12-digit AWS account identifier |
-| **IAM Username** | `Vidushi` | Also accepts `demo` as a login alias |
-| **Password** | `demo1234` | Pre-filled on `/login` |
-| **1-Click Demo Sign-In** | Click **1-Click Demo Sign-In (Vidushi)** | Calls `POST /auth/demo` and persists JWT in `localStorage` |
+| Role | IAM Username | Password | Seeded Resources |
+| :--- | :--- | :--- | :--- |
+| **1-Click Demo User** | `Vidushi` (`demo` alias) | `demo1234` | 10 hosted zones, 3 health checks, 2 traffic policies |
+| **Administrator** | `admin@route53demo.com` | `AdminDemo123!` | 8 hosted zones, 1 health check, 1 traffic policy |
+| **DevOps Engineer** | `devops@route53demo.com` | `DevopsDemo123!` | 6 hosted zones, 1 health check, 1 traffic policy |
+| **Read-Only Viewer** | `viewer@route53demo.com` | `ViewerDemo123!` | 4 hosted zones |
 
 > [!TIP]
 > You can also click **Create IAM user** on the sign-in form to register a separate isolated IAM user stored in SQLite.

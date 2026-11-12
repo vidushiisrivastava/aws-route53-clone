@@ -32,8 +32,10 @@ A full-stack clone of the **Amazon Route 53 Management Console** built with **Ne
 
 | Account | Username | Password | IAM Account ID | Provisioning |
 | :--- | :--- | :--- | :--- | :--- |
-| **Primary Demo User** | `Vidushi` | `demo1234` | `1793-0234-9211` | Auto-provisioned on first `POST /auth/demo` or **1-Click Demo Sign-In** |
-| **Seeded Admin User** | `admin` | `password` | `1793-0234-9211` | Created by `python backend/seed_demo_user.py` |
+| **1-Click Demo User** | `Vidushi` | `demo1234` | `1793-0234-9211` | Seeded by `backend/seed.py` & auto-provisioned on `POST /auth/demo` |
+| **Administrator** | `admin@route53demo.com` | `AdminDemo123!` | `1793-0234-9211` | Seeded by `backend/seed.py` (8 hosted zones + health checks + policies) |
+| **DevOps Engineer** | `devops@route53demo.com` | `DevopsDemo123!` | `1793-0234-9211` | Seeded by `backend/seed.py` (6 hosted zones + health checks + policies) |
+| **Read-Only Viewer** | `viewer@route53demo.com` | `ViewerDemo123!` | `1793-0234-9211` | Seeded by `backend/seed.py` (4 hosted zones) |
 
 > [!TIP]
 > On the `/login` page, click **1-Click Demo Sign-In (Vidushi)** to authenticate immediately without typing credentials. See [docs/walkthrough.md](docs/walkthrough.md) for a complete page-by-page guide.
@@ -239,16 +241,15 @@ pip install -r requirements.txt
 
 ### 2. Initialize & Seed the Database
 
-Create the SQLite tables and optionally seed the `admin` user (`admin` / `password`):
+Run the idempotent seeder to populate 4 demo accounts, 28 Public/Private hosted zones, realistic DNS records (`A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `SRV`, `SOA`), health checks, and traffic policies:
 
 ```bash
 # From backend/ with venv activated:
-python create_db.py
-python seed_demo_user.py
+python seed.py
 ```
 
 > [!NOTE]
-> Starting the FastAPI server also runs `Base.metadata.create_all()` and `run_sqlite_migrations()` automatically, and clicking **1-Click Demo Sign-In (Vidushi)** on `/login` auto-creates the `Vidushi` (`demo1234`) account if it does not yet exist.
+> Starting the FastAPI server (`uvicorn app.main:app`) also runs `Base.metadata.create_all()`, `run_sqlite_migrations()`, and `seed_database(..., only_if_empty=True)` automatically when the database is empty.
 
 ### 3. Start the Backend Server
 

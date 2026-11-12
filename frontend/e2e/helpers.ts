@@ -39,8 +39,8 @@ export async function captureDocScreenshot(
  */
 export async function signInWithDemoAccount(page: Page): Promise<void> {
   await page.goto('/login');
-  await expect(page.getByRole('button', { name: '1-Click Demo Sign-In (Vidushi)' })).toBeVisible();
-  await page.getByRole('button', { name: '1-Click Demo Sign-In (Vidushi)' }).click();
+  await expect(page.getByRole('button', { name: '1-Click Demo Sign-In (admin@route53demo.com)' })).toBeVisible();
+  await page.getByRole('button', { name: '1-Click Demo Sign-In (admin@route53demo.com)' }).click();
   await page.waitForURL('**/hosted-zones');
   await expect(page.getByRole('heading', { name: /Hosted zones/i })).toBeVisible();
 

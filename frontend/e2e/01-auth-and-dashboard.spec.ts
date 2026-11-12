@@ -16,7 +16,7 @@ test.describe('Authentication & Dashboard Stats', () => {
     await page.evaluate(() => window.localStorage.clear());
 
     await expect(page.getByRole('heading', { name: 'Sign in as IAM user' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '1-Click Demo Sign-In (Vidushi)' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '1-Click Demo Sign-In (admin@route53demo.com)' })).toBeVisible();
 
     await captureDocScreenshot(page, '01-login.png');
 

@@ -65,15 +65,15 @@ class TestAuthEndpoints:
         )
         assert bad_token.status_code == 401
 
-        # Demo login seeds/reuses Vidushi
+        # Demo login seeds/reuses admin@route53demo.com
         demo = client.post("/auth/demo")
         assert demo.status_code == 200
-        assert demo.json()["user"]["username"] == "Vidushi"
+        assert demo.json()["user"]["username"] == "admin@route53demo.com"
 
         # Wrong password fails with 401
         wrong_pw = client.post(
             "/auth/login-json",
-            json={"username": "Vidushi", "password": "wrong-password"},
+            json={"username": "admin@route53demo.com", "password": "wrong-password"},
         )
         assert wrong_pw.status_code == 401
 

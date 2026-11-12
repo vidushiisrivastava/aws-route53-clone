@@ -144,6 +144,26 @@ class TestRoute53Features(unittest.TestCase):
         self.assertEqual(resolver.list_resolver_rules(db=self.db, current_user=self.user), [])
         self.assertEqual(resolver.list_profiles(db=self.db, current_user=self.user), [])
 
+    def test_seed_database_populates_and_is_idempotent(self):
+        from app.seed import seed_database
+
+        first = seed_database(self.db, only_if_empty=False)
+        self.assertEqual(first["users"], 4)
+        self.assertEqual(first["zones"], 28)
+        self.assertEqual(first["health_checks"], 5)
+        self.assertEqual(first["traffic_policies"], 4)
+        self.assertGreater(first["records"], 100)
+
+        rec_types = {r.type for r in self.db.query(models.DnsRecord).all()}
+        for expected_type in ("A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV", "SOA"):
+            self.assertIn(expected_type, rec_types)
+
+        zone_types = {z.zone_type for z in self.db.query(models.HostedZone).all()}
+        self.assertEqual(zone_types, {"Public", "Private"})
+
+        second = seed_database(self.db, only_if_empty=False)
+        self.assertEqual(second, {"users": 0, "zones": 0, "records": 0, "health_checks": 0, "traffic_policies": 0})
+
 
 if __name__ == "__main__":
     unittest.main()

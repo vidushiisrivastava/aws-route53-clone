@@ -29,13 +29,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 def get_or_create_demo_user(db: Session) -> models.User:
-    user = db.query(models.User).filter(models.User.id == 1).first()
-    if not user:
-        user = db.query(models.User).filter(models.User.username.in_(["demo", "Vidushi"])).first()
+    user = db.query(models.User).filter(models.User.username == "admin@route53demo.com").first()
     if not user:
         user = models.User(
-            username="Vidushi",
-            hashed_password=get_password_hash("demo1234"),
+            username="admin@route53demo.com",
+            hashed_password=get_password_hash("AdminDemo123!"),
             is_active=True,
         )
         db.add(user)
@@ -59,12 +57,12 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
 
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    get_or_create_demo_user(db)
-    # Allow 'demo' alias for demo account id=1
+    demo_user = get_or_create_demo_user(db)
+    # Allow 'demo' alias for primary demo account
     lookup_name = form_data.username.strip()
     user = db.query(models.User).filter(models.User.username == lookup_name).first()
     if not user and lookup_name.lower() == "demo":
-        user = db.query(models.User).filter(models.User.id == 1).first()
+        user = demo_user
 
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect IAM username or password")
@@ -79,11 +77,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @router.post("/login-json")
 def login_json(payload: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    get_or_create_demo_user(db)
+    demo_user = get_or_create_demo_user(db)
     lookup_name = payload.username.strip()
     user = db.query(models.User).filter(models.User.username == lookup_name).first()
     if not user and lookup_name.lower() == "demo":
-        user = db.query(models.User).filter(models.User.id == 1).first()
+        user = demo_user
 
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect IAM username or password")
