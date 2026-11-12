@@ -13,6 +13,11 @@ frontend/.turbo/
 node_modules/
 .next/
 
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+playwright/.cache/
+
 # Misc
 .env
 .env.local

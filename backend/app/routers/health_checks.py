@@ -47,11 +47,13 @@ def probe_endpoint(protocol: str, endpoint: str, port: int, resource_path: str =
         return "Unhealthy", f"Connection failed: {str(e)[:120]}"
 
 
+@router.get("", response_model=List[schemas.HealthCheckRead], include_in_schema=False)
 @router.get("/", response_model=List[schemas.HealthCheckRead])
 def list_health_checks(db: Session = Depends(database.get_db)):
     return db.query(models.HealthCheck).order_by(models.HealthCheck.id.desc()).all()
 
 
+@router.post("", response_model=schemas.HealthCheckRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=schemas.HealthCheckRead, status_code=status.HTTP_201_CREATED)
 def create_health_check(payload: schemas.HealthCheckCreate, db: Session = Depends(database.get_db)):
     proto = payload.protocol.upper()
@@ -73,6 +75,14 @@ def create_health_check(payload: schemas.HealthCheckCreate, db: Session = Depend
     db.add(hc)
     db.commit()
     db.refresh(hc)
+    return hc
+
+
+@router.get("/{hc_id}", response_model=schemas.HealthCheckRead)
+def get_health_check(hc_id: int, db: Session = Depends(database.get_db)):
+    hc = db.query(models.HealthCheck).filter(models.HealthCheck.id == hc_id).first()
+    if not hc:
+        raise HTTPException(status_code=404, detail="Health check not found")
     return hc
 
 

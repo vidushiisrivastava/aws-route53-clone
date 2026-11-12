@@ -9,11 +9,13 @@ router = APIRouter(tags=["resolver_and_profiles"])
 
 
 # ---------- Resolver Endpoints ----------
+@router.get("/resolver/endpoints", response_model=List[schemas.ResolverEndpointRead], include_in_schema=False)
 @router.get("/resolver/endpoints/", response_model=List[schemas.ResolverEndpointRead])
 def list_resolver_endpoints(db: Session = Depends(database.get_db)):
     return db.query(models.ResolverEndpoint).order_by(models.ResolverEndpoint.id.desc()).all()
 
 
+@router.post("/resolver/endpoints", response_model=schemas.ResolverEndpointRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/resolver/endpoints/", response_model=schemas.ResolverEndpointRead, status_code=status.HTTP_201_CREATED)
 def create_resolver_endpoint(payload: schemas.ResolverEndpointCreate, db: Session = Depends(database.get_db)):
     ep = models.ResolverEndpoint(
@@ -29,6 +31,14 @@ def create_resolver_endpoint(payload: schemas.ResolverEndpointCreate, db: Sessio
     return ep
 
 
+@router.get("/resolver/endpoints/{ep_id}", response_model=schemas.ResolverEndpointRead)
+def get_resolver_endpoint(ep_id: int, db: Session = Depends(database.get_db)):
+    ep = db.query(models.ResolverEndpoint).filter(models.ResolverEndpoint.id == ep_id).first()
+    if not ep:
+        raise HTTPException(status_code=404, detail="Resolver endpoint not found")
+    return ep
+
+
 @router.delete("/resolver/endpoints/{ep_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_resolver_endpoint(ep_id: int, db: Session = Depends(database.get_db)):
     ep = db.query(models.ResolverEndpoint).filter(models.ResolverEndpoint.id == ep_id).first()
@@ -40,11 +50,13 @@ def delete_resolver_endpoint(ep_id: int, db: Session = Depends(database.get_db))
 
 
 # ---------- Resolver Rules ----------
+@router.get("/resolver/rules", response_model=List[schemas.ResolverRuleRead], include_in_schema=False)
 @router.get("/resolver/rules/", response_model=List[schemas.ResolverRuleRead])
 def list_resolver_rules(db: Session = Depends(database.get_db)):
     return db.query(models.ResolverRule).order_by(models.ResolverRule.id.desc()).all()
 
 
+@router.post("/resolver/rules", response_model=schemas.ResolverRuleRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/resolver/rules/", response_model=schemas.ResolverRuleRead, status_code=status.HTTP_201_CREATED)
 def create_resolver_rule(payload: schemas.ResolverRuleCreate, db: Session = Depends(database.get_db)):
     rule = models.ResolverRule(
@@ -61,6 +73,14 @@ def create_resolver_rule(payload: schemas.ResolverRuleCreate, db: Session = Depe
     return rule
 
 
+@router.get("/resolver/rules/{rule_id}", response_model=schemas.ResolverRuleRead)
+def get_resolver_rule(rule_id: int, db: Session = Depends(database.get_db)):
+    rule = db.query(models.ResolverRule).filter(models.ResolverRule.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Resolver rule not found")
+    return rule
+
+
 @router.delete("/resolver/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_resolver_rule(rule_id: int, db: Session = Depends(database.get_db)):
     rule = db.query(models.ResolverRule).filter(models.ResolverRule.id == rule_id).first()
@@ -72,11 +92,13 @@ def delete_resolver_rule(rule_id: int, db: Session = Depends(database.get_db)):
 
 
 # ---------- Profiles ----------
+@router.get("/profiles", response_model=List[schemas.ProfileRead], include_in_schema=False)
 @router.get("/profiles/", response_model=List[schemas.ProfileRead])
 def list_profiles(db: Session = Depends(database.get_db)):
     return db.query(models.Route53Profile).order_by(models.Route53Profile.id.desc()).all()
 
 
+@router.post("/profiles", response_model=schemas.ProfileRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/profiles/", response_model=schemas.ProfileRead, status_code=status.HTTP_201_CREATED)
 def create_profile(payload: schemas.ProfileCreate, db: Session = Depends(database.get_db)):
     vpcs = [v.strip() for v in (payload.vpc_associations or "").split(",") if v.strip()]
@@ -90,6 +112,14 @@ def create_profile(payload: schemas.ProfileCreate, db: Session = Depends(databas
     db.add(profile)
     db.commit()
     db.refresh(profile)
+    return profile
+
+
+@router.get("/profiles/{profile_id}", response_model=schemas.ProfileRead)
+def get_profile(profile_id: int, db: Session = Depends(database.get_db)):
+    profile = db.query(models.Route53Profile).filter(models.Route53Profile.id == profile_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
     return profile
 
 

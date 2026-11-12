@@ -3,11 +3,29 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 import random
+import re
 
 from .. import models, schemas, database
 from ..dependencies import get_current_user
 
 router = APIRouter(prefix="/zones", tags=["hosted_zones"])
+
+DOMAIN_NAME_RE = re.compile(
+    r"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$"
+)
+
+
+def validate_domain_name(raw_name: str) -> str:
+    """Normalize trailing dot and validate DNS domain name syntax."""
+    clean_name = (raw_name or "").strip().rstrip(".")
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Domain name cannot be empty.")
+    if len(clean_name) > 253 or not DOMAIN_NAME_RE.match(clean_name):
+        raise HTTPException(
+            status_code=400,
+            detail="Enter a valid domain name (e.g. example.com).",
+        )
+    return clean_name
 
 
 def generate_aws_nameservers(seed: int) -> List[str]:
@@ -90,7 +108,7 @@ def create_zone(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    clean_name = zone.name.strip().rstrip(".")
+    clean_name = validate_domain_name(zone.name)
     z_type = (
         "Private"
         if (zone.zone_type or "").lower() == "private" or (zone.type or "").lower() == "private"
@@ -155,9 +173,7 @@ def update_zone(
 ):
     zone = resolve_owned_zone(zone_id, current_user, db)
     if zone_in.name is not None:
-        new_name = zone_in.name.strip().rstrip(".")
-        if not new_name:
-            raise HTTPException(status_code=400, detail="Domain name cannot be empty.")
+        new_name = validate_domain_name(zone_in.name)
         old_name = zone.name.strip().rstrip(".")
         if new_name != old_name:
             old_apex = f"{old_name}."

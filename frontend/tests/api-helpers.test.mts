@@ -172,3 +172,4 @@ test('axios request and response interceptors attach Bearer token and redirect o
   assert.equal(getStoredToken(), null);
   assert.equal(mockWindow.location.href, '/login');
 });
+

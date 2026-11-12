@@ -10,11 +10,13 @@ router = APIRouter(tags=["traffic_management"])
 
 
 # ---------- Traffic Policies ----------
+@router.get("/traffic-policies", response_model=List[schemas.TrafficPolicyRead], include_in_schema=False)
 @router.get("/traffic-policies/", response_model=List[schemas.TrafficPolicyRead])
 def list_traffic_policies(db: Session = Depends(database.get_db)):
     return db.query(models.TrafficPolicy).order_by(models.TrafficPolicy.id.desc()).all()
 
 
+@router.post("/traffic-policies", response_model=schemas.TrafficPolicyRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/traffic-policies/", response_model=schemas.TrafficPolicyRead, status_code=status.HTTP_201_CREATED)
 def create_traffic_policy(payload: schemas.TrafficPolicyCreate, db: Session = Depends(database.get_db)):
     default_doc = json.dumps(
@@ -51,6 +53,14 @@ def create_traffic_policy(payload: schemas.TrafficPolicyCreate, db: Session = De
     return policy
 
 
+@router.get("/traffic-policies/{policy_id}", response_model=schemas.TrafficPolicyRead)
+def get_traffic_policy(policy_id: int, db: Session = Depends(database.get_db)):
+    policy = db.query(models.TrafficPolicy).filter(models.TrafficPolicy.id == policy_id).first()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Traffic policy not found")
+    return policy
+
+
 @router.post("/traffic-policies/{policy_id}/version", response_model=schemas.TrafficPolicyRead)
 def create_policy_version(policy_id: int, payload: schemas.TrafficPolicyUpdate, db: Session = Depends(database.get_db)):
     policy = db.query(models.TrafficPolicy).filter(models.TrafficPolicy.id == policy_id).first()
@@ -77,11 +87,13 @@ def delete_traffic_policy(policy_id: int, db: Session = Depends(database.get_db)
 
 
 # ---------- Policy Records ----------
+@router.get("/policy-records", response_model=List[schemas.PolicyRecordRead], include_in_schema=False)
 @router.get("/policy-records/", response_model=List[schemas.PolicyRecordRead])
 def list_policy_records(db: Session = Depends(database.get_db)):
     return db.query(models.PolicyRecord).order_by(models.PolicyRecord.id.desc()).all()
 
 
+@router.post("/policy-records", response_model=schemas.PolicyRecordRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/policy-records/", response_model=schemas.PolicyRecordRead, status_code=status.HTTP_201_CREATED)
 def create_policy_record(payload: schemas.PolicyRecordCreate, db: Session = Depends(database.get_db)):
     zone_name = payload.hosted_zone_name.strip()
@@ -113,6 +125,14 @@ def create_policy_record(payload: schemas.PolicyRecordCreate, db: Session = Depe
     db.add(pr)
     db.commit()
     db.refresh(pr)
+    return pr
+
+
+@router.get("/policy-records/{record_id}", response_model=schemas.PolicyRecordRead)
+def get_policy_record(record_id: int, db: Session = Depends(database.get_db)):
+    pr = db.query(models.PolicyRecord).filter(models.PolicyRecord.id == record_id).first()
+    if not pr:
+        raise HTTPException(status_code=404, detail="Policy record not found")
     return pr
 
 

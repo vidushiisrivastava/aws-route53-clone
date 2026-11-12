@@ -45,3 +45,4 @@ def validate_schema(schema_cls: Any, data: Any) -> Any:
 def validate_list_schema(item_schema: Type[Any], items: list[Any]) -> list[Any]:
     """Validate a list of response objects against List[item_schema]."""
     return TypeAdapter(List[item_schema]).validate_python(items)
+

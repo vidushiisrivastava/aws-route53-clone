@@ -100,3 +100,4 @@ test('API calls avoid bare collection trailing-slash omissions that trigger HTTP
   }
   assert.deepEqual(violations, []);
 });
+
