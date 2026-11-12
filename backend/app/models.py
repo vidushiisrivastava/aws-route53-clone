@@ -41,6 +41,7 @@ class RecordType(str, enum.Enum):
     TXT = "TXT"
     MX = "MX"
     NS = "NS"
+    SOA = "SOA"
     PTR = "PTR"
     SRV = "SRV"
     CAA = "CAA"

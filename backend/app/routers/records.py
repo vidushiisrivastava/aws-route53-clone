@@ -9,7 +9,7 @@ from .zones import resolve_owned_zone
 
 router = APIRouter(prefix="/zones/{zone_id}/records", tags=["dns_records"])
 
-ALLOWED_RECORD_TYPES = {"A", "AAAA", "CNAME", "TXT", "MX", "NS", "PTR", "SRV", "CAA"}
+ALLOWED_RECORD_TYPES = {"A", "AAAA", "CNAME", "TXT", "MX", "NS", "SOA", "PTR", "SRV", "CAA"}
 
 
 def format_record_name(raw_name: str, zone_name: str) -> str:
