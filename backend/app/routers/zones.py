@@ -154,6 +154,29 @@ def update_zone(
     current_user: models.User = Depends(get_current_user),
 ):
     zone = resolve_owned_zone(zone_id, current_user, db)
+    if zone_in.name is not None:
+        new_name = zone_in.name.strip().rstrip(".")
+        if not new_name:
+            raise HTTPException(status_code=400, detail="Domain name cannot be empty.")
+        old_name = zone.name.strip().rstrip(".")
+        if new_name != old_name:
+            old_apex = f"{old_name}."
+            new_apex = f"{new_name}."
+            old_suffix = f".{old_name}."
+            for rec in zone.records:
+                rec_name = (rec.name or "").strip()
+                if rec_name == old_apex or rec_name == old_name:
+                    rec.name = new_apex
+                elif rec_name.endswith(old_suffix):
+                    rec.name = f"{rec_name[:-len(old_suffix)]}.{new_name}."
+            policy_recs = (
+                db.query(models.PolicyRecord)
+                .filter(models.PolicyRecord.hosted_zone_id == zone.id)
+                .all()
+            )
+            for pr in policy_recs:
+                pr.hosted_zone_name = new_name
+            zone.name = new_name
     if zone_in.comment is not None:
         zone.comment = zone_in.comment
     db.commit()

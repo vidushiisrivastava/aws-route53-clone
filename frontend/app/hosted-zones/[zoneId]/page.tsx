@@ -24,7 +24,7 @@ import CopyToClipboard from '@cloudscape-design/components/copy-to-clipboard';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 
 import ConsoleLayout from '../../components/ConsoleLayout';
-import { api, HostedZone, DNSRecord, HealthCheck, notify, getHostedZoneType } from '../../lib/api';
+import { api, HostedZone, DNSRecord, HealthCheck, notify, getHostedZoneType, hostedZoneHref, validateDomainName } from '../../lib/api';
 
 const RECORD_TYPES = [
   { label: 'A – Routes traffic to an IPv4 address', value: 'A' },
@@ -107,7 +107,9 @@ export default function HostedZoneDetailPage() {
 
   // Edit / Delete Zone Modals
   const [editZoneModalVisible, setEditZoneModalVisible] = useState(false);
+  const [zoneNameDraft, setZoneNameDraft] = useState('');
   const [zoneCommentDraft, setZoneCommentDraft] = useState('');
+  const [editZoneError, setEditZoneError] = useState('');
   const [deleteZoneModalVisible, setDeleteZoneModalVisible] = useState(false);
   const [deleteZoneConfirm, setDeleteZoneConfirm] = useState('');
 
@@ -330,18 +332,34 @@ export default function HostedZoneDetailPage() {
   };
 
   const handleUpdateZone = async () => {
+    const domainErr = validateDomainName(zoneNameDraft);
+    if (domainErr) {
+      setEditZoneError(domainErr);
+      return;
+    }
     try {
       setSubmitting(true);
+      setEditZoneError('');
+      const cleanName = zoneNameDraft.trim().replace(/\.$/, '');
       const targetZoneRef = encodeURIComponent(getZoneRef());
-      await api.put(`/zones/${targetZoneRef}`, { comment: zoneCommentDraft });
+      const res = await api.put<HostedZone>(`/zones/${targetZoneRef}`, {
+        name: cleanName,
+        comment: zoneCommentDraft,
+      });
+      const renamed = cleanName !== zone?.name;
       setEditZoneModalVisible(false);
       notify({
         type: 'success',
-        header: `Updated hosted zone ${zone?.name || zoneParam}`,
+        header: `Updated hosted zone ${cleanName}`,
       });
-      await loadData();
+      if (renamed && res.data) {
+        router.replace(hostedZoneHref(res.data));
+      } else {
+        await loadData();
+      }
     } catch (err) {
       console.error('Failed to update zone', err);
+      setEditZoneError('Failed to update hosted zone.');
       notify({ type: 'error', header: 'Failed to update hosted zone' });
     } finally {
       setSubmitting(false);
@@ -515,7 +533,9 @@ export default function HostedZoneDetailPage() {
               </ButtonDropdown>
               <Button
                 onClick={() => {
+                  setZoneNameDraft(zone?.name || '');
                   setZoneCommentDraft(zone?.comment || '');
+                  setEditZoneError('');
                   setEditZoneModalVisible(true);
                 }}
               >
@@ -1064,11 +1084,24 @@ export default function HostedZoneDetailPage() {
         }
       >
         <SpaceBetween size="m">
-          <FormField label="Domain name">
-            <Input value={zone?.name || ''} disabled />
+          {editZoneError ? <Alert type="error">{editZoneError}</Alert> : null}
+          <FormField
+            label="Domain name"
+            description="Update the domain name for this hosted zone."
+          >
+            <Input
+              name="edit_zone_name"
+              value={zoneNameDraft}
+              onChange={({ detail }) => {
+                setZoneNameDraft(detail.value);
+                if (editZoneError) setEditZoneError('');
+              }}
+              placeholder="example.com"
+            />
           </FormField>
           <FormField label="Description">
             <Textarea
+              name="edit_zone_comment"
               value={zoneCommentDraft}
               onChange={({ detail }) => setZoneCommentDraft(detail.value)}
               rows={3}

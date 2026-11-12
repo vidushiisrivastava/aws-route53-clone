@@ -21,7 +21,7 @@ import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import Toggle from '@cloudscape-design/components/toggle';
 
 import ConsoleLayout from '../components/ConsoleLayout';
-import { api, HostedZone, notify, getHostedZoneType, hostedZoneHref } from '../lib/api';
+import { api, HostedZone, notify, getHostedZoneType, hostedZoneHref, validateDomainName } from '../lib/api';
 
 const PAGE_SIZE = 10;
 
@@ -48,6 +48,7 @@ export default function HostedZonesPage() {
 
   // Edit zone modal state
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
   const [editComment, setEditComment] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
@@ -139,6 +140,7 @@ export default function HostedZonesPage() {
 
   const openEditModal = () => {
     if (selectedItems.length !== 1) return;
+    setEditName(selectedItems[0].name || '');
     setEditComment(selectedItems[0].comment || '');
     setEditError('');
     setEditModalVisible(true);
@@ -146,21 +148,30 @@ export default function HostedZonesPage() {
 
   const handleSaveEdit = async () => {
     if (selectedItems.length !== 1) return;
+    const domainErr = validateDomainName(editName);
+    if (domainErr) {
+      setEditError(domainErr);
+      return;
+    }
     setIsSavingEdit(true);
     setEditError('');
     try {
       const target = selectedItems[0];
-      await api.put(`/zones/${target.id}`, { comment: editComment });
+      const cleanName = editName.trim().replace(/\.$/, '');
+      await api.put(`/zones/${target.id}`, {
+        name: cleanName,
+        comment: editComment,
+      });
       setEditModalVisible(false);
       setSelectedItems([]);
       notify({
         type: 'success',
-        header: `Updated hosted zone ${target.name}`,
-        content: 'Hosted zone description saved.',
+        header: `Updated hosted zone ${cleanName}`,
+        content: 'Hosted zone settings saved.',
       });
       await fetchZones();
     } catch {
-      setEditError('Failed to update hosted zone description.');
+      setEditError('Failed to update hosted zone.');
     } finally {
       setIsSavingEdit(false);
     }
@@ -523,10 +534,25 @@ export default function HostedZonesPage() {
         <SpaceBetween size="m">
           {editError ? <Alert type="error">{editError}</Alert> : null}
           <FormField
+            label="Domain name"
+            description="Update the domain name for this hosted zone."
+          >
+            <Input
+              name="edit_zone_name"
+              value={editName}
+              onChange={({ detail }) => {
+                setEditName(detail.value);
+                if (editError) setEditError('');
+              }}
+              placeholder="example.com"
+            />
+          </FormField>
+          <FormField
             label="Description - optional"
             description="Update the comment or description for this hosted zone."
           >
             <Textarea
+              name="edit_zone_comment"
               value={editComment}
               onChange={({ detail }) => setEditComment(detail.value)}
               placeholder="e.g. Production DNS zone"

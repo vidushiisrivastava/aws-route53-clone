@@ -125,6 +125,19 @@ export function hostedZoneHref(
   return hasDuplicates ? `${basePath}?id=${encodeURIComponent(String(zone.id))}` : basePath;
 }
 
+export function validateDomainName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Domain name is required.';
+  if (
+    !/^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*\.?$/.test(
+      trimmed
+    )
+  ) {
+    return 'Enter a valid domain name (e.g. example.com).';
+  }
+  return '';
+}
+
 export interface DNSRecord {
   id: number | string;
   hosted_zone_id?: string;
