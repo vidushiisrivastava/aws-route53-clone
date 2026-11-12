@@ -354,7 +354,9 @@ export default function HostedZoneDetailPage() {
       await loadData();
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setModalError(detail || 'Failed to delete record(s).');
+      const message = detail || 'Failed to delete record(s).';
+      setModalError(message);
+      notify({ type: 'error', header: 'Failed to delete record(s)', content: message });
     } finally {
       setSubmitting(false);
     }
@@ -800,7 +802,15 @@ export default function HostedZoneDetailPage() {
                       selectedRecords.length === 0 ||
                       !selectedRecords.some((r) => !isSystemRecord(r))
                     }
-                    onClick={() => setDeleteRecordModalVisible(true)}
+                    disabledReason={
+                      selectedRecords.length > 0 && !selectedRecords.some((r) => !isSystemRecord(r))
+                        ? 'Default apex NS and SOA records required by Route 53 cannot be deleted.'
+                        : undefined
+                    }
+                    onClick={() => {
+                      setModalError('');
+                      setDeleteRecordModalVisible(true);
+                    }}
                   >
                     {selectedRecords.length > 1
                       ? `Delete records (${selectedRecords.length})`
@@ -1036,6 +1046,7 @@ export default function HostedZoneDetailPage() {
         }
       >
         <SpaceBetween size="m">
+          {modalError && <Alert type="error">{modalError}</Alert>}
           <Alert type="warning">
             Deleting DNS records is permanent and cannot be undone. Required apex NS and SOA records will be preserved automatically.
           </Alert>
