@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@cloudscape-design/global-styles/index.css";
 import "./globals.css";
+import ClientShell from "./components/ClientShell";
 
 export const metadata: Metadata = {
   title: "Amazon Route 53 Console",
@@ -14,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="awsui-dark-mode" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <ClientShell>{children}</ClientShell>
+      </body>
     </html>
   );
 }
