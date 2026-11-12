@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas, database
 from ..dependencies import get_current_user
+from .zones import resolve_owned_zone
 
 router = APIRouter(prefix="/zones/{zone_id}/records", tags=["dns_records"])
 
@@ -107,24 +108,19 @@ def parse_bind_zone_file(zone_file: str, zone_name: str) -> list[dict]:
     return parsed
 
 
+@router.get("", response_model=List[schemas.DnsRecordRead], include_in_schema=False)
 @router.get("/", response_model=List[schemas.DnsRecordRead])
 def list_records(
-    zone_id: int,
+    zone_id: str,
     skip: int = 0,
     limit: int = 200,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
     records = (
         db.query(models.DnsRecord)
-        .filter(models.DnsRecord.zone_id == zone_id)
+        .filter(models.DnsRecord.zone_id == zone.id)
         .offset(skip)
         .limit(limit)
         .all()
@@ -132,54 +128,36 @@ def list_records(
     return [serialize_record(r) for r in records]
 
 
+@router.post("", response_model=schemas.DnsRecordRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=schemas.DnsRecordRead, status_code=status.HTTP_201_CREATED)
 def create_record(
-    zone_id: int,
+    zone_id: str,
     record: schemas.DnsRecordCreate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     full_name = format_record_name(record.name, zone.name)
     data = record.model_dump()
     data["name"] = full_name
     data["type"] = record.type.value if hasattr(record.type, "value") else str(record.type)
 
-    db_record = models.DnsRecord(**data, zone_id=zone_id)
+    db_record = models.DnsRecord(**data, zone_id=zone.id)
     db.add(db_record)
     db.commit()
     db.refresh(db_record)
     return serialize_record(db_record)
 
 
-def _get_owned_zone(
-    zone_id: int, current_user: models.User, db: Session
-) -> models.HostedZone:
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
-    return zone
-
-
 @router.post("/import-bind")
 def import_bind_records(
-    zone_id: int,
+    zone_id: str,
     payload: schemas.BindImportRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = _get_owned_zone(zone_id, current_user, db)
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     parsed_items = parse_bind_zone_file(payload.zone_file, zone.name)
     if not parsed_items:
@@ -200,7 +178,7 @@ def import_bind_records(
             ttl=item["ttl"],
             value=item["value"],
             routing_policy="Simple",
-            zone_id=zone_id,
+            zone_id=zone.id,
         )
         db.add(rec)
         created.append(rec)
@@ -211,16 +189,16 @@ def import_bind_records(
 
 @router.post("/bulk-delete")
 def bulk_delete_records(
-    zone_id: int,
+    zone_id: str,
     payload: schemas.BulkDeleteRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = _get_owned_zone(zone_id, current_user, db)
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     records = (
         db.query(models.DnsRecord)
-        .filter(models.DnsRecord.zone_id == zone_id, models.DnsRecord.id.in_(payload.ids))
+        .filter(models.DnsRecord.zone_id == zone.id, models.DnsRecord.id.in_(payload.ids))
         .all()
     )
     deleted_count = 0
@@ -237,16 +215,16 @@ def bulk_delete_records(
 
 @router.post("/bulk-ttl")
 def bulk_update_record_ttl(
-    zone_id: int,
+    zone_id: str,
     payload: schemas.BulkTtlUpdateRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    _get_owned_zone(zone_id, current_user, db)
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     records = (
         db.query(models.DnsRecord)
-        .filter(models.DnsRecord.zone_id == zone_id, models.DnsRecord.id.in_(payload.ids))
+        .filter(models.DnsRecord.zone_id == zone.id, models.DnsRecord.id.in_(payload.ids))
         .all()
     )
     for r in records:
@@ -257,21 +235,15 @@ def bulk_update_record_ttl(
 
 @router.get("/{record_id}", response_model=schemas.DnsRecordRead)
 def get_record(
-    zone_id: int,
+    zone_id: str,
     record_id: int,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
     record = (
         db.query(models.DnsRecord)
-        .filter(models.DnsRecord.id == record_id, models.DnsRecord.zone_id == zone_id)
+        .filter(models.DnsRecord.id == record_id, models.DnsRecord.zone_id == zone.id)
         .first()
     )
     if not record:
@@ -281,23 +253,17 @@ def get_record(
 
 @router.put("/{record_id}", response_model=schemas.DnsRecordRead)
 def update_record(
-    zone_id: int,
+    zone_id: str,
     record_id: int,
     record_in: schemas.DnsRecordUpdate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     record = (
         db.query(models.DnsRecord)
-        .filter(models.DnsRecord.id == record_id, models.DnsRecord.zone_id == zone_id)
+        .filter(models.DnsRecord.id == record_id, models.DnsRecord.zone_id == zone.id)
         .first()
     )
     if not record:
@@ -316,22 +282,16 @@ def update_record(
 
 @router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_record(
-    zone_id: int,
+    zone_id: str,
     record_id: int,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     record = (
         db.query(models.DnsRecord)
-        .filter(models.DnsRecord.id == record_id, models.DnsRecord.zone_id == zone_id)
+        .filter(models.DnsRecord.id == record_id, models.DnsRecord.zone_id == zone.id)
         .first()
     )
     if not record:

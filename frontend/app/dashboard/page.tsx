@@ -22,6 +22,8 @@ import {
   ResolverEndpoint,
   ResolverRule,
   Route53Profile,
+  getHostedZoneType,
+  hostedZoneHref,
 } from '../lib/api';
 
 export default function DashboardPage() {
@@ -37,7 +39,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     Promise.allSettled([
-      api.get<HostedZone[]>('/zones'),
+      api.get<HostedZone[]>('/zones/'),
       api.get<HealthCheck[]>('/health-checks/'),
       api.get<TrafficPolicy[]>('/traffic-policies/'),
       api.get<PolicyRecord[]>('/policy-records/'),
@@ -160,7 +162,7 @@ export default function DashboardPage() {
               id: 'name',
               header: 'Hosted zone name',
               cell: (item) => (
-                <Link onFollow={() => router.push(`/hosted-zones/${item.id}`)}>
+                <Link onFollow={() => router.push(hostedZoneHref(item, zones))}>
                   {item.name}
                 </Link>
               ),
@@ -169,11 +171,14 @@ export default function DashboardPage() {
             {
               id: 'type',
               header: 'Type',
-              cell: (item) => (
-                <Badge color={(item.type ?? 'Public') === 'Public' ? 'blue' : 'grey'}>
-                  {(item.type ?? 'Public') === 'Public' ? 'Public hosted zone' : 'Private hosted zone'}
-                </Badge>
-              ),
+              cell: (item) => {
+                const zType = getHostedZoneType(item);
+                return (
+                  <Badge color={zType === 'Public' ? 'blue' : 'grey'}>
+                    {zType === 'Public' ? 'Public hosted zone' : 'Private hosted zone'}
+                  </Badge>
+                );
+              },
             },
             {
               id: 'record_count',

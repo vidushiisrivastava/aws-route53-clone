@@ -46,6 +46,26 @@ def serialize_zone(zone: models.HostedZone) -> dict:
     }
 
 
+def resolve_owned_zone(
+    zone_ref: str, current_user: models.User, db: Session
+) -> models.HostedZone:
+    """Resolve a hosted zone by numeric ID or domain name owned by the current user."""
+    ref = zone_ref.strip().rstrip(".")
+    query = db.query(models.HostedZone).filter(models.HostedZone.owner_id == current_user.id)
+    if ref.isdigit():
+        zone = query.filter(models.HostedZone.id == int(ref)).first()
+    else:
+        zone = (
+            query.filter(models.HostedZone.name == ref)
+            .order_by(models.HostedZone.id.desc())
+            .first()
+        )
+    if not zone:
+        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    return zone
+
+
+@router.get("", response_model=List[schemas.HostedZoneRead], include_in_schema=False)
 @router.get("/", response_model=List[schemas.HostedZoneRead])
 def list_zones(
     skip: int = 0,
@@ -63,6 +83,7 @@ def list_zones(
     return [serialize_zone(z) for z in zones]
 
 
+@router.post("", response_model=schemas.HostedZoneRead, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=schemas.HostedZoneRead, status_code=status.HTTP_201_CREATED)
 def create_zone(
     zone: schemas.HostedZoneCreate,
@@ -70,8 +91,11 @@ def create_zone(
     current_user: models.User = Depends(get_current_user),
 ):
     clean_name = zone.name.strip().rstrip(".")
-    z_type = zone.zone_type or zone.type or "Public"
-    z_type = "Private" if z_type.lower() == "private" else "Public"
+    z_type = (
+        "Private"
+        if (zone.zone_type or "").lower() == "private" or (zone.type or "").lower() == "private"
+        else "Public"
+    )
 
     db_zone = models.HostedZone(
         name=clean_name,
@@ -114,34 +138,22 @@ def create_zone(
 
 @router.get("/{zone_id}", response_model=schemas.HostedZoneRead)
 def get_zone(
-    zone_id: int,
+    zone_id: str,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
     return serialize_zone(zone)
 
 
 @router.put("/{zone_id}", response_model=schemas.HostedZoneRead)
 def update_zone(
-    zone_id: int,
+    zone_id: str,
     zone_in: schemas.HostedZoneUpdate,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
     if zone_in.comment is not None:
         zone.comment = zone_in.comment
     db.commit()
@@ -151,17 +163,11 @@ def update_zone(
 
 @router.delete("/{zone_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_zone(
-    zone_id: int,
+    zone_id: str,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
     db.delete(zone)
     db.commit()
     return
@@ -191,18 +197,12 @@ def bulk_delete_zones(
 
 @router.get("/{zone_id}/export")
 def export_zone(
-    zone_id: int,
+    zone_id: str,
     format: str = Query("bind", pattern="^(bind|json)$"),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    zone = (
-        db.query(models.HostedZone)
-        .filter(models.HostedZone.id == zone_id, models.HostedZone.owner_id == current_user.id)
-        .first()
-    )
-    if not zone:
-        raise HTTPException(status_code=404, detail="Hosted zone not found")
+    zone = resolve_owned_zone(zone_id, current_user, db)
 
     if format == "json":
         return JSONResponse(

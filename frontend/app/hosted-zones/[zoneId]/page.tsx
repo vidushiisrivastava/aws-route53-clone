@@ -24,7 +24,7 @@ import CopyToClipboard from '@cloudscape-design/components/copy-to-clipboard';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 
 import ConsoleLayout from '../../components/ConsoleLayout';
-import { api, HostedZone, DNSRecord, HealthCheck, notify } from '../../lib/api';
+import { api, HostedZone, DNSRecord, HealthCheck, notify, getHostedZoneType } from '../../lib/api';
 
 const RECORD_TYPES = [
   { label: 'A – Routes traffic to an IPv4 address', value: 'A' },
@@ -75,12 +75,13 @@ const PAGE_SIZE = 10;
 export default function HostedZoneDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const zoneId = params?.zoneId as string;
+  const zoneParam = decodeURIComponent((params?.zoneId as string) || '');
 
   const [zone, setZone] = useState<HostedZone | null>(null);
   const [records, setRecords] = useState<DNSRecord[]>([]);
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [filterText, setFilterText] = useState('');
   const [typeFilter, setTypeFilter] = useState<SelectProps.Option>(TYPE_FILTER_OPTIONS[0]);
   const [selectedRecords, setSelectedRecords] = useState<DNSRecord[]>([]);
@@ -126,27 +127,60 @@ export default function HostedZoneDetailPage() {
     value: '',
   });
 
+  const getZoneRef = () => {
+    if (zone?.id !== undefined && zone?.id !== null) {
+      return String(zone.id);
+    }
+    if (typeof window !== 'undefined') {
+      const qid = new URLSearchParams(window.location.search).get('id');
+      if (qid) return qid;
+    }
+    return zoneParam;
+  };
+
   const loadData = async () => {
+    const qid =
+      typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('id') : null;
+    const lookupRef = encodeURIComponent(qid || zoneParam);
     try {
       setLoading(true);
-      const [zoneRes, recordsRes, hcRes] = await Promise.all([
-        api.get<HostedZone>(`/zones/${zoneId}`),
-        api.get<DNSRecord[]>(`/zones/${zoneId}/records`),
-        api.get<HealthCheck[]>('/health-checks/').catch(() => ({ data: [] as HealthCheck[] })),
+      setLoadError('');
+      const [zoneRes, recordsRes, hcRes] = await Promise.allSettled([
+        api.get<HostedZone>(`/zones/${lookupRef}`),
+        api.get<DNSRecord[]>(`/zones/${lookupRef}/records/`),
+        api.get<HealthCheck[]>('/health-checks/'),
       ]);
-      setZone(zoneRes.data);
-      setRecords(recordsRes.data);
-      setHealthChecks(hcRes.data);
+
+      if (zoneRes.status === 'fulfilled') {
+        setZone(zoneRes.value.data);
+      } else {
+        setZone(null);
+        const reason = zoneRes.reason as { response?: { data?: { detail?: string } } };
+        setLoadError(
+          reason?.response?.data?.detail || `Failed to load hosted zone "${zoneParam}".`
+        );
+      }
+
+      if (recordsRes.status === 'fulfilled') {
+        setRecords(recordsRes.value.data);
+      } else if (zoneRes.status === 'fulfilled') {
+        setLoadError('Loaded hosted zone metadata, but failed to load DNS records.');
+      }
+
+      if (hcRes.status === 'fulfilled') {
+        setHealthChecks(hcRes.value.data);
+      }
     } catch (err) {
       console.error('Failed to load zone details', err);
+      setLoadError(`Failed to load hosted zone "${zoneParam}".`);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (zoneId) loadData();
-  }, [zoneId]);
+    if (zoneParam) loadData();
+  }, [zoneParam]);
 
   const filteredRecords = records.filter((r) => {
     if (typeFilter.value && typeFilter.value !== 'ALL' && r.type !== typeFilter.value) {
@@ -237,14 +271,15 @@ export default function HostedZoneDetailPage() {
 
     try {
       setSubmitting(true);
+      const targetZoneRef = encodeURIComponent(getZoneRef());
       if (editingRecord) {
-        await api.put(`/zones/${zoneId}/records/${editingRecord.id}`, payload);
+        await api.put(`/zones/${targetZoneRef}/records/${editingRecord.id}`, payload);
         notify({
           type: 'success',
           header: `Record ${payload.name || zone?.name} (${payload.type}) updated`,
         });
       } else {
-        await api.post(`/zones/${zoneId}/records`, payload);
+        await api.post(`/zones/${targetZoneRef}/records/`, payload);
         notify({
           type: 'success',
           header: `Record ${payload.name || zone?.name} (${payload.type}) created`,
@@ -265,9 +300,10 @@ export default function HostedZoneDetailPage() {
     if (selectedRecords.length === 0) return;
     try {
       setSubmitting(true);
+      const targetZoneRef = encodeURIComponent(getZoneRef());
       if (selectedRecords.length > 1) {
         const ids = selectedRecords.map((r) => Number(r.id));
-        const res = await api.post(`/zones/${zoneId}/records/bulk-delete`, { ids });
+        const res = await api.post(`/zones/${targetZoneRef}/records/bulk-delete`, { ids });
         const skipped = res.data.skipped_system || 0;
         notify({
           type: 'success',
@@ -276,7 +312,7 @@ export default function HostedZoneDetailPage() {
         });
       } else {
         const target = selectedRecords[0];
-        await api.delete(`/zones/${zoneId}/records/${target.id}`);
+        await api.delete(`/zones/${targetZoneRef}/records/${target.id}`);
         notify({
           type: 'success',
           header: `Deleted ${target.type} record (${target.name})`,
@@ -296,11 +332,12 @@ export default function HostedZoneDetailPage() {
   const handleUpdateZone = async () => {
     try {
       setSubmitting(true);
-      await api.put(`/zones/${zoneId}`, { comment: zoneCommentDraft });
+      const targetZoneRef = encodeURIComponent(getZoneRef());
+      await api.put(`/zones/${targetZoneRef}`, { comment: zoneCommentDraft });
       setEditZoneModalVisible(false);
       notify({
         type: 'success',
-        header: `Updated hosted zone ${zone?.name || zoneId}`,
+        header: `Updated hosted zone ${zone?.name || zoneParam}`,
       });
       await loadData();
     } catch (err) {
@@ -315,7 +352,8 @@ export default function HostedZoneDetailPage() {
     if (deleteZoneConfirm !== zone?.name) return;
     try {
       setSubmitting(true);
-      await api.delete(`/zones/${zoneId}`);
+      const targetZoneRef = encodeURIComponent(getZoneRef());
+      await api.delete(`/zones/${targetZoneRef}`);
       notify({
         type: 'success',
         header: `Hosted zone ${zone?.name} deleted`,
@@ -332,7 +370,8 @@ export default function HostedZoneDetailPage() {
   const handleExportZone = async (format: 'bind' | 'json') => {
     if (!zone) return;
     try {
-      const res = await api.get(`/zones/${zoneId}/export?format=${format}`, {
+      const targetZoneRef = encodeURIComponent(getZoneRef());
+      const res = await api.get(`/zones/${targetZoneRef}/export?format=${format}`, {
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(res.data);
@@ -363,7 +402,8 @@ export default function HostedZoneDetailPage() {
     }
     try {
       setImporting(true);
-      const res = await api.post(`/zones/${zoneId}/records/import-bind`, {
+      const targetZoneRef = encodeURIComponent(getZoneRef());
+      const res = await api.post(`/zones/${targetZoneRef}/records/import-bind`, {
         zone_file: bindZoneText,
       });
       const importedCount = res.data.imported ?? 0;
@@ -403,8 +443,9 @@ export default function HostedZoneDetailPage() {
     }
     try {
       setUpdatingBulkTtl(true);
+      const targetZoneRef = encodeURIComponent(getZoneRef());
       const ids = selectedRecords.map((r) => Number(r.id));
-      const res = await api.post(`/zones/${zoneId}/records/bulk-ttl`, {
+      const res = await api.post(`/zones/${targetZoneRef}/records/bulk-ttl`, {
         ids,
         ttl: ttlNum,
       });
@@ -438,16 +479,23 @@ export default function HostedZoneDetailPage() {
     return '-';
   };
 
+  const resolvedZoneType = zone ? getHostedZoneType(zone) : null;
+  const displayZoneName = zone?.name ?? (zoneParam || 'Hosted zone');
+
   return (
     <ConsoleLayout
       breadcrumbs={[
         { text: 'Route 53', href: '/dashboard' },
         { text: 'Hosted zones', href: '/hosted-zones' },
-        { text: zone?.name ?? zoneId, href: `/hosted-zones/${zoneId}` },
+        {
+          text: displayZoneName,
+          href: `/hosted-zones/${encodeURIComponent(zone?.name ?? zoneParam)}`,
+        },
       ]}
       contentType="default"
     >
       <SpaceBetween size="l">
+        {loadError ? <Alert type="error">{loadError}</Alert> : null}
         <Header
           variant="h1"
           actions={
@@ -484,7 +532,7 @@ export default function HostedZoneDetailPage() {
             </SpaceBetween>
           }
         >
-          {zone?.name ?? `Hosted zone ${zoneId}`}
+          {displayZoneName}
         </Header>
 
         {/* Hosted zone details */}
@@ -497,9 +545,13 @@ export default function HostedZoneDetailPage() {
               </SpaceBetween>
               <SpaceBetween size="xs">
                 <Box variant="awsui-key-label">Type</Box>
-                <Badge color={!zone?.type || zone.type === 'Public' ? 'blue' : 'grey'}>
-                  {!zone?.type || zone.type === 'Public' ? 'Public hosted zone' : 'Private hosted zone'}
-                </Badge>
+                {resolvedZoneType ? (
+                  <Badge color={resolvedZoneType === 'Public' ? 'blue' : 'grey'}>
+                    {resolvedZoneType === 'Public' ? 'Public hosted zone' : 'Private hosted zone'}
+                  </Badge>
+                ) : (
+                  <Box>-</Box>
+                )}
               </SpaceBetween>
               <SpaceBetween size="xs">
                 <Box variant="awsui-key-label">Hosted zone ID</Box>
@@ -516,7 +568,7 @@ export default function HostedZoneDetailPage() {
                 <Box variant="awsui-key-label">Description</Box>
                 <Box>{zone?.comment || '-'}</Box>
               </SpaceBetween>
-              {zone?.type === 'Private' ? (
+              {resolvedZoneType === 'Private' ? (
                 <SpaceBetween size="xs">
                   <Box variant="awsui-key-label">Associated VPC</Box>
                   <Box variant="code">

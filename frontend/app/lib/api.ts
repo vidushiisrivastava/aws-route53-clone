@@ -103,6 +103,28 @@ export interface HostedZone {
   created_at?: string;
 }
 
+export function getHostedZoneType(
+  zone?: Pick<HostedZone, 'type' | 'zone_type'> | null
+): 'Public' | 'Private' {
+  const raw = (zone?.zone_type || zone?.type || 'Public').toLowerCase();
+  return raw === 'private' ? 'Private' : 'Public';
+}
+
+export function hostedZoneHref(
+  zone: Pick<HostedZone, 'id' | 'name'>,
+  allZones?: Pick<HostedZone, 'id' | 'name'>[]
+): string {
+  const slug = (zone.name || '').trim().replace(/\.$/, '');
+  if (!slug) {
+    return `/hosted-zones/${zone.id}`;
+  }
+  const hasDuplicates =
+    allZones !== undefined &&
+    allZones.filter((z) => (z.name || '').trim().replace(/\.$/, '') === slug).length > 1;
+  const basePath = `/hosted-zones/${encodeURIComponent(slug)}`;
+  return hasDuplicates ? `${basePath}?id=${encodeURIComponent(String(zone.id))}` : basePath;
+}
+
 export interface DNSRecord {
   id: number | string;
   hosted_zone_id?: string;

@@ -17,7 +17,7 @@ import Tiles from '@cloudscape-design/components/tiles';
 import ColumnLayout from '@cloudscape-design/components/column-layout';
 
 import ConsoleLayout from '../../components/ConsoleLayout';
-import { api, notify } from '../../lib/api';
+import { api, notify, hostedZoneHref } from '../../lib/api';
 
 const AWS_REGIONS = [
   { label: 'US East (N. Virginia) us-east-1', value: 'us-east-1' },
@@ -81,7 +81,7 @@ export default function CreateHostedZonePage() {
         header: `Hosted zone ${cleanDomain} created`,
         content: importedCount > 0 ? `Imported ${importedCount} BIND record(s).` : undefined,
       });
-      router.push(`/hosted-zones/${res.data.id}`);
+      router.push(hostedZoneHref(res.data));
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to create hosted zone. Please try again.');
     } finally {

@@ -21,7 +21,7 @@ import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import Toggle from '@cloudscape-design/components/toggle';
 
 import ConsoleLayout from '../components/ConsoleLayout';
-import { api, HostedZone, notify } from '../lib/api';
+import { api, HostedZone, notify, getHostedZoneType, hostedZoneHref } from '../lib/api';
 
 const PAGE_SIZE = 10;
 
@@ -335,7 +335,7 @@ export default function HostedZonesPage() {
             id: 'name',
             header: 'Hosted zone name',
             cell: (item) => (
-              <Link onFollow={() => router.push(`/hosted-zones/${item.id}`)}>
+              <Link onFollow={() => router.push(hostedZoneHref(item, zones))}>
                 {item.name}
               </Link>
             ),
@@ -345,11 +345,14 @@ export default function HostedZonesPage() {
           {
             id: 'type',
             header: 'Type',
-            cell: (item) => (
-              <Badge color={(item.type ?? 'Public') === 'Public' ? 'blue' : 'grey'}>
-                {(item.type ?? 'Public') === 'Public' ? 'Public hosted zone' : 'Private hosted zone'}
-              </Badge>
-            ),
+            cell: (item) => {
+              const zType = getHostedZoneType(item);
+              return (
+                <Badge color={zType === 'Public' ? 'blue' : 'grey'}>
+                  {zType === 'Public' ? 'Public hosted zone' : 'Private hosted zone'}
+                </Badge>
+              );
+            },
           },
           {
             id: 'record_count',
@@ -426,7 +429,11 @@ export default function HostedZonesPage() {
                 <Button onClick={openImportModal}>Import BIND</Button>
                 <Button
                   disabled={selectedItems.length !== 1}
-                  onClick={() => router.push(`/hosted-zones/${selectedItems[0]?.id}`)}
+                  onClick={() => {
+                    if (selectedItems[0]) {
+                      router.push(hostedZoneHref(selectedItems[0], zones));
+                    }
+                  }}
                 >
                   View details
                 </Button>

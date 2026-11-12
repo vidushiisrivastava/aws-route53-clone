@@ -36,7 +36,7 @@ export default function PolicyRecordsPage() {
       setLoading(true);
       const [prRes, zRes, tpRes] = await Promise.all([
         api.get<PolicyRecord[]>('/policy-records/'),
-        api.get<HostedZone[]>('/zones'),
+        api.get<HostedZone[]>('/zones/'),
         api.get<TrafficPolicy[]>('/traffic-policies/'),
       ]);
       setRecords(prRes.data);
