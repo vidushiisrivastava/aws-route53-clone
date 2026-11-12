@@ -137,6 +137,8 @@ export default function PolicyRecordsPage() {
         trackBy="id"
         filter={
           <TextFilter
+            controlId="policy-records-filter"
+            filteringAriaLabel="Find policy record"
             filteringText={filterText}
             filteringPlaceholder="Find policy record"
             onChange={({ detail }) => setFilterText(detail.filteringText)}

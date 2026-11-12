@@ -365,6 +365,9 @@ export default function ConsoleLayout({
                 <path d="M21 21L16.65 16.65" />
               </svg>
               <input
+                id="aws-console-search"
+                name="aws_console_search"
+                aria-label="Search Route 53 pages"
                 ref={searchRef}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

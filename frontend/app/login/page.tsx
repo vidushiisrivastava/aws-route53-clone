@@ -202,6 +202,7 @@ export default function LoginPage() {
                     description="Mocked AWS account identifier"
                   >
                     <Input
+                      name="account_id"
                       value={accountId}
                       onChange={({ detail }) => setAccountId(detail.value)}
                       placeholder="1793-0234-9211"
@@ -210,6 +211,7 @@ export default function LoginPage() {
 
                   <FormField label="IAM user name">
                     <Input
+                      name="username"
                       value={username}
                       onChange={({ detail }) => setUsername(detail.value)}
                       placeholder="Vidushi"
@@ -219,6 +221,7 @@ export default function LoginPage() {
 
                   <FormField label="Password">
                     <Input
+                      name="password"
                       type="password"
                       value={password}
                       onChange={({ detail }) => setPassword(detail.value)}

@@ -656,6 +656,8 @@ export default function HostedZoneDetailPage() {
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 280px' }}>
                 <TextFilter
+                  controlId="zone-records-filter"
+                  filteringAriaLabel="Search records by name, type, or value"
                   filteringPlaceholder="Search records by name, type, or value"
                   filteringText={filterText}
                   onChange={({ detail }) => {
@@ -783,6 +785,7 @@ export default function HostedZoneDetailPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Input
+                  name="record_name"
                   value={recordName}
                   onChange={({ detail }) => setRecordName(detail.value)}
                   placeholder="www"
@@ -802,11 +805,15 @@ export default function HostedZoneDetailPage() {
             </FormField>
           </ColumnLayout>
 
-          <FormField label="Alias" description="Route traffic to an AWS resource such as CloudFront or an ELB.">
+          <SpaceBetween size="xxs">
+            <Box variant="awsui-key-label">Alias</Box>
+            <Box variant="small" color="text-status-inactive">
+              Route traffic to an AWS resource such as CloudFront or an ELB.
+            </Box>
             <Toggle checked={isAlias} onChange={({ detail }) => setIsAlias(detail.checked)}>
               Route traffic to an Alias target
             </Toggle>
-          </FormField>
+          </SpaceBetween>
 
           <FormField
             label="Value"
@@ -1009,6 +1016,9 @@ export default function HostedZoneDetailPage() {
           </Box>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <input
+              id="zone-detail-bind-file"
+              name="bind_file"
+              aria-label="Upload BIND zone file"
               type="file"
               accept=".zone,.txt,.db"
               onChange={handleBindFileUpload}

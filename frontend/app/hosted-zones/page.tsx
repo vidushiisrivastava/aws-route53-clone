@@ -394,6 +394,8 @@ export default function HostedZonesPage() {
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 280px' }}>
               <TextFilter
+                controlId="hosted-zones-filter"
+                filteringAriaLabel="Find hosted zone by name, ID, or description"
                 filteringPlaceholder="Find hosted zone by name, ID, or description"
                 filteringText={filterText}
                 onChange={({ detail }) => {
@@ -645,6 +647,9 @@ export default function HostedZonesPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <input
+              id="hosted-zones-bind-file"
+              name="bind_file"
+              aria-label="Upload BIND zone file"
               type="file"
               accept=".zone,.txt,.db"
               onChange={handleBindFileUpload}

@@ -137,6 +137,8 @@ export default function TrafficPoliciesPage() {
           trackBy="id"
           filter={
             <TextFilter
+              controlId="traffic-policies-filter"
+              filteringAriaLabel="Find traffic policy"
               filteringText={filterText}
               filteringPlaceholder="Find traffic policy"
               onChange={({ detail }) => setFilterText(detail.filteringText)}

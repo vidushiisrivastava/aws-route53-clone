@@ -138,6 +138,7 @@ export default function CreateHostedZonePage() {
                 constraintText="Enter a fully qualified domain name, for example, example.com. The trailing dot is optional."
               >
                 <Input
+                  name="domain_name"
                   value={domainName}
                   onChange={({ detail }) => {
                     setDomainName(detail.value);
@@ -159,6 +160,7 @@ export default function CreateHostedZonePage() {
                 description="A comment that you want to include about the hosted zone."
               >
                 <Textarea
+                  name="description"
                   value={description}
                   onChange={({ detail }) => setDescription(detail.value)}
                   placeholder="Enter a description"
@@ -166,11 +168,15 @@ export default function CreateHostedZonePage() {
                 />
               </FormField>
 
-              <FormField
-                label="Type"
-                description="Determines whether this hosted zone routes internet traffic or traffic within an Amazon VPC."
-              >
+              <SpaceBetween size="xs">
+                <div id="hosted-zone-type-label">
+                  <Box variant="awsui-key-label">Type</Box>
+                  <Box variant="small" color="text-body-secondary">
+                    Determines whether this hosted zone routes internet traffic or traffic within an Amazon VPC.
+                  </Box>
+                </div>
                 <Tiles
+                  ariaLabelledby="hosted-zone-type-label"
                   value={zoneType}
                   onChange={({ detail }) => setZoneType(detail.value)}
                   items={[
@@ -188,7 +194,7 @@ export default function CreateHostedZonePage() {
                     },
                   ]}
                 />
-              </FormField>
+              </SpaceBetween>
             </SpaceBetween>
           </Container>
 

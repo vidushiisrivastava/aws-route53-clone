@@ -148,6 +148,8 @@ export default function ProfilesPage() {
         trackBy="id"
         filter={
           <TextFilter
+            controlId="profiles-filter"
+            filteringAriaLabel="Find profile"
             filteringText={filterText}
             filteringPlaceholder="Find profile"
             onChange={({ detail }) => setFilterText(detail.filteringText)}

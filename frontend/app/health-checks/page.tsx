@@ -152,6 +152,8 @@ export default function HealthChecksPage() {
           trackBy="id"
           filter={
             <TextFilter
+              controlId="health-checks-filter"
+              filteringAriaLabel="Find health check"
               filteringText={filterText}
               filteringPlaceholder="Find health check"
               onChange={({ detail }) => setFilterText(detail.filteringText)}
