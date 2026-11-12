@@ -2,6 +2,8 @@
 
 A full-stack clone of the **Amazon Route 53 Management Console** built with **Next.js 16 (TypeScript)**, **AWS Cloudscape Design System**, **FastAPI**, and **SQLite**. It recreates the dark-mode AWS Route 53 console experience, end-to-end Hosted Zone and DNS Record management, routing policies, health checks, traffic policies, VPC resolver endpoints/rules, profiles, mocked AWS IAM authentication, BIND zone file import/export, bulk actions, keyboard shortcuts, and Cloudscape Flashbar notifications.
 
+![AWS Route 53 Clone Console](docs/screenshots/02-dashboard.png)
+
 ---
 
 ## Table of Contents
@@ -86,7 +88,7 @@ flowchart TB
     Health -->|"HTTP / HTTPS / TCP Probe"| Target["Configured Endpoint"]
 ```
 
-For full sequence diagrams, database evolution notes (`run_sqlite_migrations()`), and design trade-offs, see **[docs/architecture.md](docs/architecture.md)**.
+For full sequence diagrams, database evolution notes (`run_sqlite_migrations()`), and design trade-offs, see **[docs/architecture.md](docs/architecture.md)**. For a shareable, production-scale multi-region DNS control & data plane HLD, see **[docs/mature-service-hld.md](docs/mature-service-hld.md)**.
 
 ---
 
@@ -324,5 +326,6 @@ npm run test:e2e:ui
 ## Additional Documentation
 
 - **[System Architecture & ER Diagram](docs/architecture.md)** — HLD Mermaid diagrams, SQLite ER diagram, migrations, and architectural decisions.
+- **[Mature Service HLD (Production Scale)](docs/mature-service-hld.md)** — Shareable multi-region Anycast DNS control & data plane HLD, propagation sequence, and scaling trade-offs.
 - **[API Design & Reference](docs/api-design.md)** — Endpoint contracts, schemas, status codes, and RESTful design rationale.
 - **[User Walkthrough & Demo Guide](docs/walkthrough.md)** — Page-by-page console walkthrough and pre-configured demo credentials.
