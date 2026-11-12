@@ -1,10 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const isWindows = process.platform === 'win32';
-const backendPython = isWindows
-  ? 'venv\\Scripts\\python.exe'
-  : 'venv/bin/python';
+const venvPython = isWindows ? 'venv\\Scripts\\python.exe' : 'venv/bin/python';
+const backendPython = fs.existsSync(path.resolve(__dirname, '../backend', venvPython))
+  ? venvPython
+  : isWindows
+    ? 'python'
+    : 'python3';
 
 export default defineConfig({
   testDir: './e2e',

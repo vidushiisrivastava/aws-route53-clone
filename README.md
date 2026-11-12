@@ -23,7 +23,7 @@ A full-stack clone of the **Amazon Route 53 Management Console** built with **Ne
 
 | Resource | URL / Value | Notes |
 | :--- | :--- | :--- |
-| **Live Demo URL** | *Deploy `frontend/` (Vercel) + `backend/` (Railway/Render) and insert URL here* | Set `NEXT_PUBLIC_API_URL` to your deployed FastAPI URL |
+| **Live Demo URL** | [https://aws-route53-clone-blue.vercel.app](https://aws-route53-clone-blue.vercel.app) | Deployed Next.js console on Vercel |
 | **Local Console URL** | `http://localhost:3000` | Route 53 Overview landing page |
 | **Local IAM Sign-In** | `http://localhost:3000/login` | Supports **1-Click Demo Sign-In (`Vidushi`)** |
 | **Backend API & Swagger** | `http://localhost:8000/docs` | Interactive OpenAPI 3.1 documentation |
